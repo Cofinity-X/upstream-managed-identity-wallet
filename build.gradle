@@ -140,11 +140,11 @@ tasks.register('dashDependencies') { dashDependencies ->
             // resolving 'archives' or 'default' is deprecated
             if (conf.canBeResolved && conf.getName() != 'archives' && conf.getName() != 'default') {
                 deps.addAll(conf.incoming.resolutionResult.allDependencies
-                        // the 'allDependencies' method return a 'DependencyResult'
-                        // we're only interested in the 'ResolvedDependencyResult' sub-interface
-                        // docs: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/ResolutionResult.html#allDependencies-groovy.lang.Closure-
-                        // docs: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/DependencyResult.html
-                        // docs: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/ResolvedDependencyResult.html
+                // the 'allDependencies' method return a 'DependencyResult'
+                // we're only interested in the 'ResolvedDependencyResult' sub-interface
+                // docs: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/ResolutionResult.html#allDependencies-groovy.lang.Closure-
+                // docs: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/DependencyResult.html
+                // docs: https://docs.gradle.org/current/javadoc/org/gradle/api/artifacts/result/ResolvedDependencyResult.html
                         .findAll({ it instanceof ResolvedDependencyResult })
                         .collect { ResolvedDependencyResult dep ->
                             "${dep.selected}"
@@ -166,7 +166,7 @@ tasks.register('dashLicenseCheck', JavaExec) { dashLicenseCheck ->
     doFirst {
         classpath = files('dash.jar')
         // docs: https://eclipse-tractusx.github.io/docs/release/trg-7/trg-7-04
-        args('-project', 'automotive.tractusx',  '-summary', 'DEPENDENCIES', 'deps.txt')
+        args('-project', 'automotive.tractusx', '-summary', 'DEPENDENCIES', 'deps.txt')
     }
     doLast {
         logger.lifecycle("Removing 'deps.txt' now.")
@@ -183,8 +183,53 @@ dependencyManagement {
     }
 }
 
-tasks.named('test', Test) {
+
+tasks.named('test') {
     useJUnitPlatform()
+    filter {
+        excludeTestsMatching("IT*")
+        excludeTestsMatching("*IT")
+        excludeTestsMatching("E2E*")
+        excludeTestsMatching("*E2E")
+    }
+    try {
+        if (integration != null) {
+            finalizedBy("integrationTest")
+            finalizedBy("e2e")
+        }
+    } catch (MissingPropertyException e) {
+    }
+}
+
+tasks.register("integrationTest", Test.class) {
+    useJUnitPlatform()
+    description = "Runs integration tests."
+    group = "verification"
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    filter {
+        includeTestsMatching("IT*")
+        includeTestsMatching("*IT")
+    }
+    try {
+        if (e2e != null) {
+            finalizedBy("e2e")
+        }
+    } catch (MissingPropertyException e) {
+    }
+}
+
+tasks.register("e2e", Test.class) {
+    useJUnitPlatform()
+    filter {
+        setFailOnNoMatchingTests(false)
+        includeTestsMatching("E2E*")
+        includeTestsMatching("*E2E")
+    }
+
+    group = "verification"
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
 }
 
 // 'build' task comes from the 'java' plugin
