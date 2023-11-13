@@ -65,7 +65,7 @@ import java.util.Objects;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, classes = {ManagedIdentityWalletsApplication.class})
 @ContextConfiguration(initializers = {TestContextInitializer.class})
-class WalletTest {
+class WalletE2E {
 
     @Autowired
     private WalletRepository walletRepository;
