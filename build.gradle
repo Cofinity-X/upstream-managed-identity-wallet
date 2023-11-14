@@ -103,6 +103,7 @@ dependencies {
     testImplementation group: 'org.mockito', name: 'mockito-inline', version: '5.2.0'
     testImplementation group: 'org.json', name: 'json', version: '20230227'
     testImplementation group: 'com.github.curious-odd-man', name: 'rgxgen', version: '1.4'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
 
 }
 
@@ -191,6 +192,7 @@ tasks.named('test') {
         excludeTestsMatching("*IT")
         excludeTestsMatching("E2E*")
         excludeTestsMatching("*E2E")
+//        includeTestsMatching("*Test")
     }
     try {
         if (integration != null) {
