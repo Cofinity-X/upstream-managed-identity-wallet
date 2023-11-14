@@ -56,7 +56,7 @@ import java.util.Objects;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, classes = {ManagedIdentityWalletsApplication.class})
 @ContextConfiguration(initializers = {TestContextInitializer.class})
-class MembershipHoldersCredentialTest {
+class MembershipHoldersCredentialIT {
     @Autowired
     private HoldersCredentialRepository holdersCredentialRepository;
     @Autowired

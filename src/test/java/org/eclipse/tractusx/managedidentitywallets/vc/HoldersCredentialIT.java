@@ -66,7 +66,7 @@ import java.util.*;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, classes = {ManagedIdentityWalletsApplication.class})
 @ContextConfiguration(initializers = {TestContextInitializer.class})
 @ExtendWith(MockitoExtension.class)
-class HoldersCredentialTest {
+class HoldersCredentialIT {
 
     @Autowired
     private HoldersCredentialRepository holdersCredentialRepository;

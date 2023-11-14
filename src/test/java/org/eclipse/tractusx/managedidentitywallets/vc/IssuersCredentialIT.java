@@ -59,7 +59,7 @@ import java.util.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, classes = {ManagedIdentityWalletsApplication.class})
 @ContextConfiguration(initializers = {TestContextInitializer.class})
-class IssuersCredentialTest {
+class IssuersCredentialIT {
 
     @Autowired
     private HoldersCredentialRepository holdersCredentialRepository;

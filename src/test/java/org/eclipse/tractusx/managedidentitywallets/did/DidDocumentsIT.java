@@ -40,7 +40,7 @@ import org.springframework.test.context.ContextConfiguration;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, classes = {ManagedIdentityWalletsApplication.class})
 @ContextConfiguration(initializers = {TestContextInitializer.class})
-class DidDocumentsTest {
+class DidDocumentsIT {
 
     @Autowired
     private WalletService walletService;

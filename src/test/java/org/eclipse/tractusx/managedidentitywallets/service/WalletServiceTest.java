@@ -27,6 +27,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
@@ -34,13 +36,18 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import javax.sql.DataSource;
 import org.eclipse.tractusx.managedidentitywallets.config.MIWSettings;
 import org.eclipse.tractusx.managedidentitywallets.dao.entity.Wallet;
 import org.eclipse.tractusx.managedidentitywallets.dao.repository.HoldersCredentialRepository;
+import org.eclipse.tractusx.managedidentitywallets.dao.repository.WalletKeyRepository;
 import org.eclipse.tractusx.managedidentitywallets.dao.repository.WalletRepository;
+import org.eclipse.tractusx.managedidentitywallets.dto.CreateWalletRequest;
 import org.eclipse.tractusx.managedidentitywallets.exception.BadDataException;
+import org.eclipse.tractusx.managedidentitywallets.exception.DuplicateWalletProblem;
 import org.eclipse.tractusx.managedidentitywallets.exception.ForbiddenException;
 import org.eclipse.tractusx.managedidentitywallets.utils.EncryptionUtils;
+import org.eclipse.tractusx.managedidentitywallets.utils.TestUtils;
 import org.eclipse.tractusx.ssi.lib.crypt.KeyPair;
 import org.eclipse.tractusx.ssi.lib.crypt.x21559.x21559Generator;
 import org.eclipse.tractusx.ssi.lib.exception.InvalidePrivateKeyFormat;
@@ -55,13 +62,12 @@ import org.eclipse.tractusx.ssi.lib.model.verifiable.credential.VerifiableCreden
 import org.eclipse.tractusx.ssi.lib.model.verifiable.credential.VerifiableCredentialSubject;
 import org.eclipse.tractusx.ssi.lib.proof.LinkedDataProofGenerator;
 import org.eclipse.tractusx.ssi.lib.proof.SignatureType;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.orm.hibernate5.HibernateTransactionManager;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -69,7 +75,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
@@ -90,24 +95,28 @@ class WalletServiceTest {
 
     private static HoldersCredentialRepository holdersCredentialRepository;
 
-    private static SpecificationUtil<Wallet> walletSpecificationUtil;
-
     private static IssuersCredentialService issuersCredentialService;
 
     private static CommonService commonService;
 
     private static WalletService walletService;
 
+
     @BeforeAll
-    public static void beforeAll() {
+    public static void beforeAll() throws SQLException {
         walletRepository = Mockito.mock(WalletRepository.class);
         miwSettings = Mockito.mock(MIWSettings.class);
         encryptionUtils = Mockito.mock(EncryptionUtils.class);
         walletKeyService = Mockito.mock(WalletKeyService.class);
         holdersCredentialRepository = Mockito.mock(HoldersCredentialRepository.class);
-        walletSpecificationUtil = new SpecificationUtil<Wallet>();
+        SpecificationUtil<Wallet> walletSpecificationUtil = new SpecificationUtil<Wallet>();
         issuersCredentialService = Mockito.mock(IssuersCredentialService.class);
         commonService = Mockito.mock(CommonService.class);
+
+        Connection connection = mock(Connection.class);
+
+        DataSource dataSource = mock(DataSource.class);
+        when(dataSource.getConnection()).thenReturn(connection);
 
 
         walletService = new WalletService(
@@ -119,7 +128,7 @@ class WalletServiceTest {
                 walletSpecificationUtil,
                 issuersCredentialService,
                 commonService,
-                new HibernateTransactionManager()
+                new DataSourceTransactionManager(dataSource)
         );
     }
 
@@ -134,6 +143,120 @@ class WalletServiceTest {
                 issuersCredentialService,
                 commonService
         );
+    }
+
+    @Nested
+    class createAuthorityWallet{
+
+        // test !walletRepository.existsByBpn(miwSettings.authorityWalletBpn())
+
+        @Test // logs only stuff, wtf
+        void shouldNotCreateAuthorityWallet(){
+            String miwSettingsBpn = TestUtils.getRandomBpmNumber();
+            when(miwSettings.authorityWalletBpn()).thenReturn(miwSettingsBpn);
+            when(miwSettings.authorityWalletName()).thenReturn("AuthorityWallet");
+            when(walletRepository.existsByBpn(any(String.class))).thenReturn(true);
+            assertDoesNotThrow(() -> walletService.createAuthorityWallet());
+        }
+
+        @Test // logs only stuff, wtf
+        void shouldCreateAuthorityWallet(){
+            String miwSettingsBpn = TestUtils.getRandomBpmNumber();
+            when(miwSettings.authorityWalletBpn()).thenReturn(miwSettingsBpn);
+            when(miwSettings.authorityWalletName()).thenReturn("AuthorityWallet");
+            when(walletRepository.existsByBpn(any(String.class))).thenReturn(false);
+            when(miwSettings.host()).thenReturn("localhost");
+
+            String did = "did:web:random";
+            Wallet createdWallet = mockWallet(miwSettingsBpn, did);
+            when(createdWallet.getName()).thenReturn("TestWallet");
+            when(createdWallet.getId()).thenReturn(42L);
+            when(walletRepository.save(any(Wallet.class))).thenReturn(createdWallet);
+
+            WalletKeyRepository walletKeyRepository = mock(WalletKeyRepository.class);
+            when(walletKeyService.getRepository()).thenReturn(walletKeyRepository);
+
+            assertDoesNotThrow(() -> walletService.createAuthorityWallet());
+        }
+
+        private void createWallet(String callerBpn, String miwSettingsBpn) {
+            CreateWalletRequest cwr = mock(CreateWalletRequest.class);
+            when(cwr.getName()).thenReturn("TestWallet");
+
+            String bpn = TestUtils.getRandomBpmNumber();
+            when(cwr.getBpn()).thenReturn(bpn);
+            when(miwSettings.authorityWalletBpn()).thenReturn(miwSettingsBpn);
+            when(miwSettings.host()).thenReturn("localhost");
+
+            String did = "did:web:random";
+            Wallet createdWallet = mockWallet(bpn, did);
+            when(createdWallet.getName()).thenReturn("TestWallet");
+            when(createdWallet.getId()).thenReturn(42L);
+            when(walletRepository.save(any(Wallet.class))).thenReturn(createdWallet);
+
+            WalletKeyRepository walletKeyRepository = mock(WalletKeyRepository.class);
+            when(walletKeyService.getRepository()).thenReturn(walletKeyRepository);
+
+            Wallet issuerWallet = mockWallet(bpn, "did:web:random2");
+            when(walletRepository.getByBpn(bpn)).thenReturn(issuerWallet);
+            Wallet wallet = walletService.createWallet(cwr, callerBpn);
+        }
+    }
+
+    @Nested
+    class getWalletsTest {
+
+        @Test
+        void shouldNotThrow() {
+            assertDoesNotThrow(() -> walletService.getWallets(0, 0, "foo", "asc"));
+        }
+    }
+
+    @Nested
+    class createWalletTest {
+
+        @Test
+        void shouldCreateWallet() {
+            String callerBpn = TestUtils.getRandomBpmNumber();
+            assertDoesNotThrow(() -> createWallet(callerBpn, callerBpn));
+        }
+
+        @Test
+        void shouldThrowForbiddenExceptionWhenCallerAndAuthorityDontMatch() {
+            String callerBpn = TestUtils.getRandomBpmNumber();
+            assertThrows(ForbiddenException.class, () -> createWallet("12345", callerBpn));
+        }
+
+        @Test
+        void shouldThrowDuplicateWhenWalletWithBpnAlreadyExists() {
+            when(walletRepository.existsByBpn(any(String.class))).thenReturn(true);
+
+            String callerBpn = TestUtils.getRandomBpmNumber();
+            assertThrows(DuplicateWalletProblem.class, () -> createWallet(callerBpn, callerBpn));
+        }
+
+        private void createWallet(String callerBpn, String miwSettingsBpn) {
+            CreateWalletRequest cwr = mock(CreateWalletRequest.class);
+            when(cwr.getName()).thenReturn("TestWallet");
+
+            String bpn = TestUtils.getRandomBpmNumber();
+            when(cwr.getBpn()).thenReturn(bpn);
+            when(miwSettings.authorityWalletBpn()).thenReturn(miwSettingsBpn);
+            when(miwSettings.host()).thenReturn("localhost");
+
+            String did = "did:web:random";
+            Wallet createdWallet = mockWallet(bpn, did);
+            when(createdWallet.getName()).thenReturn("TestWallet");
+            when(createdWallet.getId()).thenReturn(42L);
+            when(walletRepository.save(any(Wallet.class))).thenReturn(createdWallet);
+
+            WalletKeyRepository walletKeyRepository = mock(WalletKeyRepository.class);
+            when(walletKeyService.getRepository()).thenReturn(walletKeyRepository);
+
+            Wallet issuerWallet = mockWallet(bpn, "did:web:random2");
+            when(walletRepository.getByBpn(bpn)).thenReturn(issuerWallet);
+            Wallet wallet = walletService.createWallet(cwr, callerBpn);
+        }
     }
 
     @Nested

@@ -59,7 +59,7 @@ import java.util.stream.Stream;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, classes = {ManagedIdentityWalletsApplication.class})
 @ContextConfiguration(initializers = {TestContextInitializer.class})
-class FrameworkHoldersCredentialTest {
+class FrameworkHoldersCredentialIT {
     @Autowired
     private HoldersCredentialRepository holdersCredentialRepository;
     @Autowired
