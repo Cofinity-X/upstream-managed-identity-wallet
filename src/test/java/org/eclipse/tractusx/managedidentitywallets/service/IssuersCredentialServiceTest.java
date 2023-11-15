@@ -21,6 +21,7 @@
 
 package org.eclipse.tractusx.managedidentitywallets.service;
 
+import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.nimbusds.jose.util.JSONObjectUtils;
 import com.smartsensesolutions.java.commons.specification.SpecificationUtil;
 import java.io.IOException;
@@ -32,6 +33,7 @@ import java.sql.SQLException;
 import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -42,6 +44,7 @@ import java.util.Set;
 import javax.sql.DataSource;
 import org.eclipse.tractusx.managedidentitywallets.config.MIWSettings;
 import org.eclipse.tractusx.managedidentitywallets.constant.MIWVerifiableCredentialType;
+import org.eclipse.tractusx.managedidentitywallets.constant.StringPool;
 import org.eclipse.tractusx.managedidentitywallets.dao.entity.HoldersCredential;
 import org.eclipse.tractusx.managedidentitywallets.dao.entity.IssuersCredential;
 import org.eclipse.tractusx.managedidentitywallets.dao.entity.Wallet;
@@ -51,17 +54,26 @@ import org.eclipse.tractusx.managedidentitywallets.dto.IssueDismantlerCredential
 import org.eclipse.tractusx.managedidentitywallets.dto.IssueFrameworkCredentialRequest;
 import org.eclipse.tractusx.managedidentitywallets.dto.IssueMembershipCredentialRequest;
 import org.eclipse.tractusx.managedidentitywallets.exception.BadDataException;
+import org.eclipse.tractusx.managedidentitywallets.exception.DuplicateCredentialProblem;
 import org.eclipse.tractusx.managedidentitywallets.exception.ForbiddenException;
 import org.eclipse.tractusx.managedidentitywallets.utils.TestUtils;
+import org.eclipse.tractusx.ssi.lib.crypt.IKeyGenerator;
+import org.eclipse.tractusx.ssi.lib.crypt.IPublicKey;
 import org.eclipse.tractusx.ssi.lib.crypt.KeyPair;
 import org.eclipse.tractusx.ssi.lib.crypt.x21559.x21559Generator;
+import org.eclipse.tractusx.ssi.lib.did.web.DidWebFactory;
 import org.eclipse.tractusx.ssi.lib.exception.InvalidePrivateKeyFormat;
 import org.eclipse.tractusx.ssi.lib.exception.KeyGenerationException;
 import org.eclipse.tractusx.ssi.lib.exception.UnsupportedSignatureTypeException;
+import org.eclipse.tractusx.ssi.lib.model.MultibaseString;
+import org.eclipse.tractusx.ssi.lib.model.base.MultibaseFactory;
 import org.eclipse.tractusx.ssi.lib.model.did.Did;
 import org.eclipse.tractusx.ssi.lib.model.did.DidDocument;
+import org.eclipse.tractusx.ssi.lib.model.did.DidDocumentBuilder;
 import org.eclipse.tractusx.ssi.lib.model.did.DidMethod;
 import org.eclipse.tractusx.ssi.lib.model.did.DidMethodIdentifier;
+import org.eclipse.tractusx.ssi.lib.model.did.Ed25519VerificationMethod;
+import org.eclipse.tractusx.ssi.lib.model.did.Ed25519VerificationMethodBuilder;
 import org.eclipse.tractusx.ssi.lib.model.did.VerificationMethod;
 import org.eclipse.tractusx.ssi.lib.model.proof.ed21559.Ed25519Signature2020;
 import org.eclipse.tractusx.ssi.lib.model.verifiable.credential.VerifiableCredential;
@@ -73,14 +85,20 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.domain.Specification;
+import org.testcontainers.shaded.com.fasterxml.jackson.core.JsonProcessingException;
+import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.ok;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -90,6 +108,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static com.github.tomakehurst.wiremock.client.WireMock.get;
 
 class IssuersCredentialServiceTest {
 
@@ -144,28 +163,190 @@ class IssuersCredentialServiceTest {
     }
 
     @Nested
-    class issueMembershipCredential{
+    class credentialsValidation {
+
+        @RegisterExtension
+        static WireMockExtension wm1 = WireMockExtension.newInstance()
+                                                        .options(wireMockConfig().dynamicPort())
+                                                        .build();
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void shouldValidate(boolean withCredentialExpiryDate) throws KeyGenerationException {
+            KeyPair keyPair = generateKeys();
+            VerifiableCredential verifiableCredential = mockCredential(
+                    List.of("VerifiableCredential", "SummaryCredential"),
+                    List.of(mockCredentialSubject()),
+                    keyPair,
+                    "localhost%3A" + wm1.getPort(),
+                    Instant.now().plus(Duration.ofDays(5))
+            );
+            DidDocument didDocument = buildDidDocument("localhost%3A" + wm1.getPort(), keyPair);
+            wm1.stubFor(
+                    get("/.well-known/did.json").willReturn(ok(didDocument.toPrettyJson()))
+            );
+
+            Map<String, Object> stringObjectMap = assertDoesNotThrow(() -> issuersCredentialService.credentialsValidation(
+                    verifiableCredential,
+                    withCredentialExpiryDate
+            ));
+
+            assertTrue((Boolean) stringObjectMap.get(StringPool.VALID));
+        }
+
+        @ParameterizedTest
+        @ValueSource(booleans = {true, false})
+        void shouldNotValidateWithWrongSignature(boolean withCredentialExpiryDate) throws KeyGenerationException {
+            KeyPair keyPair = generateKeys();
+            KeyPair keyPair2 = generateKeys();
+            VerifiableCredential verifiableCredential = mockCredential(
+                    List.of("VerifiableCredential", "SummaryCredential"),
+                    List.of(mockCredentialSubject()),
+                    keyPair,
+                    "localhost%3A" + wm1.getPort(),
+                    Instant.now().plus(Duration.ofDays(5))
+            );
+            DidDocument didDocument = buildDidDocument("localhost%3A" + wm1.getPort(), keyPair2);
+            wm1.stubFor(
+                    get("/.well-known/did.json").willReturn(ok(didDocument.toPrettyJson()))
+            );
+
+            Map<String, Object> stringObjectMap = assertDoesNotThrow(() -> issuersCredentialService.credentialsValidation(
+                    verifiableCredential,
+                    withCredentialExpiryDate
+            ));
+
+            assertDoesNotThrow(() -> issuersCredentialService.credentialsValidation(verifiableCredential, true));
+            assertFalse((Boolean) stringObjectMap.get(StringPool.VALID));
+        }
+
         @Test
-        void shouldIssueCredential(){
-            String baseWalletBpn = TestUtils.getRandomBpmNumber();
-            List<VerificationMethod> verificationMethod = mockVerificationMethod();
-            DidDocument baseWalletDidDocument = mockDidDocument();
-            baseWalletDidDocument.put("verificationMethod", verificationMethod);
-            Wallet baseWallet = mockWallet(baseWalletBpn, "did:web:basewallet");
-            when(baseWallet.getDidDocument()).thenReturn(baseWalletDidDocument);
-            String holderWalletBpn = TestUtils.getRandomBpmNumber();
-            Wallet holderWallet = mockWallet(holderWalletBpn, "did:web:holderwallet");
+        void shouldNotValidateWithExpiredCredentialAndWrongSignature() throws KeyGenerationException {
+            KeyPair keyPair = generateKeys();
+            KeyPair keyPair2 = generateKeys();
+            VerifiableCredential verifiableCredential = mockCredential(
+                    List.of("VerifiableCredential", "SummaryCredential"),
+                    List.of(mockCredentialSubject()),
+                    keyPair,
+                    "localhost%3A" + wm1.getPort(),
+                    Instant.now().minus(Duration.ofDays(4))
+            );
+            DidDocument didDocument = buildDidDocument("localhost%3A" + wm1.getPort(), keyPair2);
+            wm1.stubFor(
+                    get("/.well-known/did.json").willReturn(ok(didDocument.toPrettyJson()))
+            );
+
+            Map<String, Object> stringObjectMap = assertDoesNotThrow(() -> issuersCredentialService.credentialsValidation(
+                    verifiableCredential,
+                    true
+            ));
+
+            assertDoesNotThrow(() -> issuersCredentialService.credentialsValidation(verifiableCredential, true));
+            assertFalse((Boolean) stringObjectMap.get(StringPool.VALID));
+        }
+
+        @Test
+        void shouldNotValidateWithExpiredCredential() throws KeyGenerationException {
+            KeyPair keyPair = generateKeys();
+            VerifiableCredential verifiableCredential = mockCredential(
+                    List.of("VerifiableCredential", "SummaryCredential"),
+                    List.of(mockCredentialSubject()),
+                    keyPair,
+                    "localhost%3A" + wm1.getPort(),
+                    Instant.now().minus(Duration.ofDays(4))
+            );
+            DidDocument didDocument = buildDidDocument("localhost%3A" + wm1.getPort(), keyPair);
+            wm1.stubFor(
+                    get("/.well-known/did.json").willReturn(ok(didDocument.toPrettyJson()))
+            );
+
+            Map<String, Object> stringObjectMap = assertDoesNotThrow(() -> issuersCredentialService.credentialsValidation(
+                    verifiableCredential,
+                    true
+            ));
+
+            assertDoesNotThrow(() -> issuersCredentialService.credentialsValidation(verifiableCredential, true));
+            assertFalse((Boolean) stringObjectMap.get(StringPool.VALID));
+        }
+    }
+
+    @Nested
+    class issueCredentialUsingBaseWallet {
+
+        @Test
+        void shouldThrowWhenVCTypeHasSummaryCredential() {
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
+
+            VerifiableCredential verifiableCredential = mockCredential(
+                    List.of("TypeA", "TypeB", MIWVerifiableCredentialType.SUMMARY_CREDENTIAL),
+                    List.of(mockCredentialSubject())
+            );
+
+            assertThrows(
+                    BadDataException.class,
+                    () -> issuersCredentialService.issueCredentialUsingBaseWallet(
+                            holderWalletBpn,
+                            verifiableCredential,
+                            baseWalletBpn
+                    )
+            );
+        }
+
+        @Test
+        void shouldThrowWhenWalletBpnDoesNotMatchCallerBPN() {
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            String baseWalletDid = baseWallet.getDid();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
+
+            VerifiableCredential verifiableCredential = mockCredential(
+                    List.of("TypeA,TypeB"),
+                    List.of(mockCredentialSubject())
+            );
+
+            when(commonService.getWalletByIdentifier(verifiableCredential.getIssuer()
+                                                                         .toString())).thenReturn(baseWallet);
+
+            assertThrows(
+                    ForbiddenException.class,
+                    () -> issuersCredentialService.issueCredentialUsingBaseWallet(
+                            baseWalletDid,
+                            verifiableCredential,
+                            baseWalletBpn
+                    )
+            );
+        }
+
+        @Test
+        void shouldIssueCredential() {
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            String baseWalletDid = baseWallet.getDid();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
 
             KeyPair keyPair = generateKeys();
 
-            when(miwSettings.contractTemplatesUrl()).thenReturn("https://templates.com");
-            when(miwSettings.authorityWalletBpn()).thenReturn(baseWalletBpn);
-            when(commonService.getWalletByIdentifier(baseWalletBpn)).thenReturn(baseWallet);
+            VerifiableCredential verifiableCredential = mockCredential(
+                    List.of("TypeA,TypeB"),
+                    List.of(mockCredentialSubject(),mockCredentialSubject2())
+            );
+            verifiableCredential.put("issuer", baseWalletBpn);
+
+            makeCreateWork();
+            when(walletKeyService.getPrivateKeyByWalletIdentifierAsBytes(any(Long.class))).thenReturn(keyPair.getPrivateKey()
+                                                                                                             .asByte());
             when(commonService.getWalletByIdentifier(holderWalletBpn)).thenReturn(holderWallet);
-            when(walletKeyService.getPrivateKeyByWalletIdentifierAsBytes(baseWallet.getId()))
-                    .thenReturn(keyPair.getPrivateKey().asByte());
-            when(miwSettings.supportedFrameworkVCTypes()).thenReturn(Set.of("SustainabilityCredential"));
-            when(miwSettings.vcExpiryDate()).thenReturn(Date.from(Instant.now().plus(Duration.ofDays(2))));
+            when(commonService.getWalletByIdentifier(verifiableCredential.getIssuer()
+                                                                         .toString())).thenReturn(baseWallet);
+            when(miwSettings.authorityWalletBpn()).thenReturn(baseWalletBpn);
             when(holdersCredentialRepository.save(any(HoldersCredential.class)))
                     .thenAnswer(new Answer<HoldersCredential>() {
                                     @Override
@@ -177,51 +358,101 @@ class IssuersCredentialServiceTest {
                                 }
                     );
 
-            // make the filter bs work
-            VerifiableCredential verifiableCredential = mockCredential(
-                    List.of("TypeA,TypeB"),
-                    List.of(mockCredentialSubject())
-            );
-            IssuersCredential issuersCredential = mockIssuerCredential(verifiableCredential);
-            //getRepository().findAll(specification, pageRequest);
-            when(issuersCredentialRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(
-                    new PageImpl<IssuersCredential>(List.of(issuersCredential))
-            );
+            assertDoesNotThrow(() -> issuersCredentialService.issueCredentialUsingBaseWallet(
+                    holderWalletBpn,
+                    verifiableCredential,
+                    baseWalletBpn
+            ));
+        }
+    }
 
-            // make inline update work: issuersCredential = create(issuersCredential); bs
-            when(issuersCredentialRepository.save(any(IssuersCredential.class)))
-                    .thenAnswer(new Answer<IssuersCredential>() {
-                                    @Override
-                                    public IssuersCredential answer(InvocationOnMock invocation) throws Throwable {
-                                        IssuersCredential argument = invocation.getArgument(0, IssuersCredential.class);
-                                        argument.setId(42L);
-                                        return argument;
-                                    }
-                                }
-                    );
+    @Nested
+    class issueMembershipCredentialTest {
+
+        @Test
+        void shouldThrowWhenHolderDidAndTypeAlreadyExist() {
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
+
+            KeyPair keyPair = generateKeys();
+
+            mockCommon(baseWalletBpn, holderWalletBpn, keyPair, baseWallet, holderWallet);
+            when(holdersCredentialRepository.existsByHolderDidAndType(any(String.class), any(String.class))).thenReturn(
+                    true);
+
+            IssueMembershipCredentialRequest issueMembershipCredentialRequest = new IssueMembershipCredentialRequest();
+            issueMembershipCredentialRequest.setBpn(holderWalletBpn);
+
+            assertThrows(DuplicateCredentialProblem.class, () -> issuersCredentialService.issueMembershipCredential(
+                    issueMembershipCredentialRequest,
+                    baseWalletBpn
+            ));
+        }
+
+        @Test
+        void shouldIssueCredential() {
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
+
+            KeyPair keyPair = generateKeys();
+
+            mockCommon(baseWalletBpn, holderWalletBpn, keyPair, baseWallet, holderWallet);
+            makeFilterWork();
+            makeCreateWork();
 
 
             IssueMembershipCredentialRequest issueMembershipCredentialRequest = new IssueMembershipCredentialRequest();
             issueMembershipCredentialRequest.setBpn(holderWalletBpn);
 
-            assertDoesNotThrow(() -> issuersCredentialService.issueMembershipCredential(issueMembershipCredentialRequest, baseWalletBpn));
+            assertDoesNotThrow(() -> issuersCredentialService.issueMembershipCredential(
+                    issueMembershipCredentialRequest,
+                    baseWalletBpn
+            ));
 
         }
     }
 
     @Nested
-    class issueDismantlerCredential{
+    class issueDismantlerCredentialTest {
 
         @Test
-        void shouldThrowWhenbaseWalletBpnIsNotCallerBpn(){
-            String baseWalletBpn = TestUtils.getRandomBpmNumber();
-            List<VerificationMethod> verificationMethod = mockVerificationMethod();
-            DidDocument baseWalletDidDocument = mockDidDocument();
-            baseWalletDidDocument.put("verificationMethod", verificationMethod);
-            Wallet baseWallet = mockWallet(baseWalletBpn, "did:web:basewallet");
-            when(baseWallet.getDidDocument()).thenReturn(baseWalletDidDocument);
-            String holderWalletBpn = TestUtils.getRandomBpmNumber();
-            Wallet holderWallet = mockWallet(holderWalletBpn, "did:web:holderwallet");
+        void shouldThrowWhenHolderDidAndTypeAlreadyExist() {
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
+
+            KeyPair keyPair = generateKeys();
+
+            mockCommon(baseWalletBpn, holderWalletBpn, keyPair, baseWallet, holderWallet);
+            when(holdersCredentialRepository.existsByHolderDidAndType(any(String.class), any(String.class))).thenReturn(
+                    true);
+
+            IssueDismantlerCredentialRequest request = new IssueDismantlerCredentialRequest();
+            request.setActivityType("dunno");
+            request.setBpn(holderWalletBpn);
+            request.setAllowedVehicleBrands(Collections.emptySet());
+
+            assertThrows(
+                    DuplicateCredentialProblem.class,
+                    () -> issuersCredentialService.issueDismantlerCredential(request, baseWalletBpn)
+            );
+        }
+
+        @Test
+        void shouldThrowWhenbaseWalletBpnIsNotCallerBpn() {
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
 
             when(miwSettings.authorityWalletBpn()).thenReturn(baseWalletBpn);
             when(commonService.getWalletByIdentifier(baseWalletBpn)).thenReturn(baseWallet);
@@ -232,64 +463,26 @@ class IssuersCredentialServiceTest {
             request.setBpn(holderWalletBpn);
             request.setAllowedVehicleBrands(Collections.emptySet());
 
-            assertThrows(ForbiddenException.class, () -> issuersCredentialService.issueDismantlerCredential(request, "1234"));
+            assertThrows(
+                    ForbiddenException.class,
+                    () -> issuersCredentialService.issueDismantlerCredential(request, "1234")
+            );
         }
 
         @Test
-        void shouldIssueCredential(){
-            String baseWalletBpn = TestUtils.getRandomBpmNumber();
-            List<VerificationMethod> verificationMethod = mockVerificationMethod();
-            DidDocument baseWalletDidDocument = mockDidDocument();
-            baseWalletDidDocument.put("verificationMethod", verificationMethod);
-            Wallet baseWallet = mockWallet(baseWalletBpn, "did:web:basewallet");
-            when(baseWallet.getDidDocument()).thenReturn(baseWalletDidDocument);
-            String holderWalletBpn = TestUtils.getRandomBpmNumber();
-            Wallet holderWallet = mockWallet(holderWalletBpn, "did:web:holderwallet");
+        void shouldIssueCredential() {
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
+
 
             KeyPair keyPair = generateKeys();
 
-            when(miwSettings.contractTemplatesUrl()).thenReturn("https://templates.com");
-            when(miwSettings.authorityWalletBpn()).thenReturn(baseWalletBpn);
-            when(commonService.getWalletByIdentifier(baseWalletBpn)).thenReturn(baseWallet);
-            when(commonService.getWalletByIdentifier(holderWalletBpn)).thenReturn(holderWallet);
-            when(walletKeyService.getPrivateKeyByWalletIdentifierAsBytes(baseWallet.getId()))
-                    .thenReturn(keyPair.getPrivateKey().asByte());
-            when(miwSettings.supportedFrameworkVCTypes()).thenReturn(Set.of("SustainabilityCredential"));
-            when(miwSettings.vcExpiryDate()).thenReturn(Date.from(Instant.now().plus(Duration.ofDays(2))));
-            when(holdersCredentialRepository.save(any(HoldersCredential.class)))
-                    .thenAnswer(new Answer<HoldersCredential>() {
-                                    @Override
-                                    public HoldersCredential answer(InvocationOnMock invocation) throws Throwable {
-                                        HoldersCredential argument = invocation.getArgument(0, HoldersCredential.class);
-                                        argument.setId(42L);
-                                        return argument;
-                                    }
-                                }
-                    );
-
-
-            // make the filter bs work
-            VerifiableCredential verifiableCredential = mockCredential(
-                    List.of("TypeA,TypeB"),
-                    List.of(mockCredentialSubject())
-            );
-            IssuersCredential issuersCredential = mockIssuerCredential(verifiableCredential);
-            //getRepository().findAll(specification, pageRequest);
-            when(issuersCredentialRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(
-                    new PageImpl<IssuersCredential>(List.of(issuersCredential))
-            );
-
-            // make inline update work: issuersCredential = create(issuersCredential); bs
-            when(issuersCredentialRepository.save(any(IssuersCredential.class)))
-                    .thenAnswer(new Answer<IssuersCredential>() {
-                                    @Override
-                                    public IssuersCredential answer(InvocationOnMock invocation) throws Throwable {
-                                        IssuersCredential argument = invocation.getArgument(0, IssuersCredential.class);
-                                        argument.setId(42L);
-                                        return argument;
-                                    }
-                                }
-                    );
+            mockCommon(baseWalletBpn, holderWalletBpn, keyPair, baseWallet, holderWallet);
+            makeFilterWork();
+            makeCreateWork();
 
             IssueDismantlerCredentialRequest request = new IssueDismantlerCredentialRequest();
             request.setActivityType("dunno");
@@ -304,65 +497,30 @@ class IssuersCredentialServiceTest {
     class issueFrameWorkCredentialTest {
 
         @Test
-        void shouldFailWhenTypeNotSupported(){
+        void shouldFailWhenTypeNotSupported() {
             when(miwSettings.supportedFrameworkVCTypes()).thenReturn(Set.of("SustainabilityCredential"));
             IssueFrameworkCredentialRequest request = new IssueFrameworkCredentialRequest();
             request.setType("type");
 
-            assertThrows(BadDataException.class, () -> issuersCredentialService.issueFrameworkCredential(request, "12345"));
+            assertThrows(
+                    BadDataException.class,
+                    () -> issuersCredentialService.issueFrameworkCredential(request, "12345")
+            );
         }
 
         @Test
         void shouldIssueCredential() {
-            String baseWalletBpn = TestUtils.getRandomBpmNumber();
-            List<VerificationMethod> verificationMethod = mockVerificationMethod();
-            DidDocument baseWalletDidDocument = mockDidDocument();
-            baseWalletDidDocument.put("verificationMethod", verificationMethod);
-            Wallet baseWallet = mockWallet(baseWalletBpn, "did:web:basewallet");
-            when(baseWallet.getDidDocument()).thenReturn(baseWalletDidDocument);
-            String holderWalletBpn = TestUtils.getRandomBpmNumber();
-            Wallet holderWallet = mockWallet(holderWalletBpn, "did:web:holderwallet");
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
 
             KeyPair keyPair = generateKeys();
 
-            when(miwSettings.contractTemplatesUrl()).thenReturn("https://templates.com");
-            when(miwSettings.authorityWalletBpn()).thenReturn(baseWalletBpn);
-            when(commonService.getWalletByIdentifier(baseWalletBpn)).thenReturn(baseWallet);
-            when(commonService.getWalletByIdentifier(holderWalletBpn)).thenReturn(holderWallet);
-            when(walletKeyService.getPrivateKeyByWalletIdentifierAsBytes(baseWallet.getId()))
-                    .thenReturn(keyPair.getPrivateKey().asByte());
-            when(miwSettings.supportedFrameworkVCTypes()).thenReturn(Set.of("SustainabilityCredential"));
-            when(miwSettings.vcExpiryDate()).thenReturn(Date.from(Instant.now().plus(Duration.ofDays(2))));
-            when(holdersCredentialRepository.save(any(HoldersCredential.class)))
-                    .thenAnswer(new Answer<HoldersCredential>() {
-                                    @Override
-                                    public HoldersCredential answer(InvocationOnMock invocation) throws Throwable {
-                                        HoldersCredential argument = invocation.getArgument(0, HoldersCredential.class);
-                                        argument.setId(42L);
-                                        return argument;
-                                    }
-                                }
-                    );
-            VerifiableCredential verifiableCredential = mockCredential(
-                    List.of("TypeA,TypeB"),
-                    List.of(mockCredentialSubject())
-            );
-            IssuersCredential issuersCredential = mockIssuerCredential(verifiableCredential);
-            //getRepository().findAll(specification, pageRequest);
-            when(issuersCredentialRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(
-                    new PageImpl<IssuersCredential>(List.of(issuersCredential))
-            );
-
-            when(issuersCredentialRepository.save(any(IssuersCredential.class)))
-                    .thenAnswer(new Answer<IssuersCredential>() {
-                                    @Override
-                                    public IssuersCredential answer(InvocationOnMock invocation) throws Throwable {
-                                        IssuersCredential argument = invocation.getArgument(0, IssuersCredential.class);
-                                        argument.setId(42L);
-                                        return argument;
-                                    }
-                                }
-                    );
+            mockCommon(baseWalletBpn, holderWalletBpn, keyPair, baseWallet, holderWallet);
+            makeFilterWork();
+            makeCreateWork();
 
             HoldersCredential holdersCredential = mock(HoldersCredential.class);
 
@@ -391,39 +549,25 @@ class IssuersCredentialServiceTest {
 
         @Test
         void shouldIssueBpnCredentialWithAuthorityFalse() {
-            String baseWalletBpn = TestUtils.getRandomBpmNumber();
-            List<VerificationMethod> verificationMethod = mockVerificationMethod();
-            DidDocument baseWalletDidDocument = mockDidDocument();
-            baseWalletDidDocument.put("verificationMethod", verificationMethod);
-            Wallet baseWallet = mockWallet(baseWalletBpn, "did:web:basewallet");
-            when(baseWallet.getDidDocument()).thenReturn(baseWalletDidDocument);
-            String holderWalletBpn = TestUtils.getRandomBpmNumber();
-            Wallet holderWallet = mockWallet(holderWalletBpn, "did:web:holderwallet");
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
 
             shouldIssueBpnCredential(baseWallet, holderWallet);
-            VerifiableCredential verifiableCredential = mockCredential(
-                    List.of("TypeA,TypeB"),
-                    List.of(mockCredentialSubject())
-            );
-            IssuersCredential issuersCredential = mockIssuerCredential(verifiableCredential);
-            //getRepository().findAll(specification, pageRequest);
-            when(issuersCredentialRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(
-                    new PageImpl<IssuersCredential>(List.of(issuersCredential))
-            );
+            makeFilterWork();
 
             assertDoesNotThrow(() -> issuersCredentialService.issueBpnCredential(baseWallet, holderWallet, false));
         }
 
         @Test
         void shouldIssueWhenFilterEmpty() {
-            String baseWalletBpn = TestUtils.getRandomBpmNumber();
-            List<VerificationMethod> verificationMethod = mockVerificationMethod();
-            DidDocument baseWalletDidDocument = mockDidDocument();
-            baseWalletDidDocument.put("verificationMethod", verificationMethod);
-            Wallet baseWallet = mockWallet(baseWalletBpn, "did:web:basewallet");
-            when(baseWallet.getDidDocument()).thenReturn(baseWalletDidDocument);
-            String holderWalletBpn = TestUtils.getRandomBpmNumber();
-            Wallet holderWallet = mockWallet(holderWalletBpn, "did:web:holderwallet");
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
 
             shouldIssueBpnCredential(baseWallet, holderWallet);
             VerifiableCredential verifiableCredential = mockCredential(
@@ -441,21 +585,18 @@ class IssuersCredentialServiceTest {
 
         @Test
         void shouldThrowWhenMorThanOneCredentialSubject() {
-            String baseWalletBpn = TestUtils.getRandomBpmNumber();
-            List<VerificationMethod> verificationMethod = mockVerificationMethod();
-            DidDocument baseWalletDidDocument = mockDidDocument();
-            baseWalletDidDocument.put("verificationMethod", verificationMethod);
-            Wallet baseWallet = mockWallet(baseWalletBpn, "did:web:basewallet");
-            when(baseWallet.getDidDocument()).thenReturn(baseWalletDidDocument);
-            String holderWalletBpn = TestUtils.getRandomBpmNumber();
-            Wallet holderWallet = mockWallet(holderWalletBpn, "did:web:holderwallet");
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
 
             shouldIssueBpnCredential(baseWallet, holderWallet);
             VerifiableCredential verifiableCredential = mockCredential(
                     List.of("TypeA,TypeB"),
                     List.of(
                             mockCredentialSubject(),
-                            mockCredentialSubject()
+                            mockCredentialSubject2()
                     )
             );
             IssuersCredential issuersCredential = mockIssuerCredential(verifiableCredential);
@@ -472,25 +613,14 @@ class IssuersCredentialServiceTest {
 
         @Test
         void shouldIssueWhenHolderCredentialIsNotEmpty() {
-            String baseWalletBpn = TestUtils.getRandomBpmNumber();
-            List<VerificationMethod> verificationMethod = mockVerificationMethod();
-            DidDocument baseWalletDidDocument = mockDidDocument();
-            baseWalletDidDocument.put("verificationMethod", verificationMethod);
-            Wallet baseWallet = mockWallet(baseWalletBpn, "did:web:basewallet");
-            when(baseWallet.getDidDocument()).thenReturn(baseWalletDidDocument);
-            String holderWalletBpn = TestUtils.getRandomBpmNumber();
-            Wallet holderWallet = mockWallet(holderWalletBpn, "did:web:holderwallet");
+            Map<String, Wallet> wallets = mockBaseAndHolderWallet();
+            Wallet baseWallet = wallets.get("base");
+            String baseWalletBpn = baseWallet.getBpn();
+            Wallet holderWallet = wallets.get("holder");
+            String holderWalletBpn = holderWallet.getBpn();
 
             shouldIssueBpnCredential(baseWallet, holderWallet);
-            VerifiableCredential verifiableCredential = mockCredential(
-                    List.of("TypeA,TypeB"),
-                    List.of(mockCredentialSubject())
-            );
-            IssuersCredential issuersCredential = mockIssuerCredential(verifiableCredential);
-            //getRepository().findAll(specification, pageRequest);
-            when(issuersCredentialRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(
-                    new PageImpl<IssuersCredential>(List.of(issuersCredential))
-            );
+            makeFilterWork();
 
             HoldersCredential holdersCredential = mock(HoldersCredential.class);
 
@@ -686,40 +816,44 @@ class IssuersCredentialServiceTest {
         return List.of(new VerificationMethod(m));
     }
 
-
     private static VerifiableCredential mockCredential(
             List<String> types,
-            List<VerifiableCredentialSubject> credentialSubjects
+            List<VerifiableCredentialSubject> credentialSubjects,
+            KeyPair keyPair,
+            String host,
+            Instant expirationDate
     ) {
-
-        Did issuer = new Did(new DidMethod("web"), new DidMethodIdentifier("localhost"), null);
+        Did issuer = new Did(new DidMethod("web"), new DidMethodIdentifier(host), null);
         final VerifiableCredentialBuilder builder =
                 new VerifiableCredentialBuilder()
                         .context(List.of(
-                                URI.create("https://www.w3.org/2018/credentials/v1"),
-                                URI.create(
-                                        "https://registry.lab.gaia-x.eu/development/api/trusted-shape-registry/v1/shapes/jsonld/trustframework#")
-                        ))
+                                         URI.create("https://www.w3.org/2018/credentials/v1"),
+                                         URI.create("https://www.w3.org/2018/credentials/examples/v1"),
+                                         URI.create("https://catenax-ng.github.io/product-core-schemas/businessPartnerData.json"),
+                                         URI.create("https://www.w3.org/ns/odrl.jsonld"),
+                                         URI.create("https://w3id.org/security/suites/jws-2020/v1"),
+                                         URI.create("https://catenax-ng.github.io/product-core-schemas/SummaryVC.json"),
+                                         URI.create("https://w3id.org/security/suites/ed25519-2020/v1")
+                                 )
+                        )
                         .id(URI.create(issuer + "#key-1"))
                         .issuer(issuer.toUri())
-                        .issuanceDate(Instant.now())
+                        .issuanceDate(Instant.now().minus(Duration.ofDays(5)))
                         .credentialSubject(credentialSubjects)
-                        .expirationDate(Instant.now().plus(Duration.ofDays(5)))
+                        .expirationDate(expirationDate)
                         .type(types);
+
+        try {
+            System.out.println(new ObjectMapper().writeValueAsString(builder.build()));
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException(e);
+        }
 
         // Ed25519 Proof Builder
         final LinkedDataProofGenerator generator;
         try {
             generator = LinkedDataProofGenerator.newInstance(SignatureType.ED21559);
         } catch (UnsupportedSignatureTypeException e) {
-            throw new AssertionError(e);
-        }
-
-        x21559Generator gen = new x21559Generator();
-        KeyPair keyPair;
-        try {
-            keyPair = gen.generateKey();
-        } catch (KeyGenerationException e) {
             throw new AssertionError(e);
         }
 
@@ -737,10 +871,38 @@ class IssuersCredentialServiceTest {
         return builder.build();
     }
 
+    private static VerifiableCredential mockCredential(
+            List<String> types,
+            List<VerifiableCredentialSubject> credentialSubjects
+    ) {
+
+        x21559Generator gen = new x21559Generator();
+        KeyPair keyPair;
+        try {
+            keyPair = gen.generateKey();
+        } catch (KeyGenerationException e) {
+            throw new AssertionError(e);
+        }
+
+        return mockCredential(types, credentialSubjects, keyPair, "localhost", Instant.now().plus(Duration.ofDays(5)));
+    }
+
 
     private static VerifiableCredentialSubject mockCredentialSubject() {
         Map<String, Object> subj;
         try (InputStream in = WalletServiceTest.class.getResourceAsStream("/credential-subject.json")) {
+            subj = JSONObjectUtils.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8));
+        } catch (IOException | ParseException e) {
+            throw new RuntimeException(e);
+        }
+
+
+        return new VerifiableCredentialSubject(subj);
+    }
+
+    private static VerifiableCredentialSubject mockCredentialSubject2() {
+        Map<String, Object> subj;
+        try (InputStream in = WalletServiceTest.class.getResourceAsStream("/credential-subject-2.json")) {
             subj = JSONObjectUtils.parse(new String(in.readAllBytes(), StandardCharsets.UTF_8));
         } catch (IOException | ParseException e) {
             throw new RuntimeException(e);
@@ -762,7 +924,7 @@ class IssuersCredentialServiceTest {
     }
 
 
-    private Map<String, Wallet> mockBaseAndHolderWallet(){
+    private Map<String, Wallet> mockBaseAndHolderWallet() {
         String baseWalletBpn = TestUtils.getRandomBpmNumber();
         List<VerificationMethod> verificationMethod = mockVerificationMethod();
         DidDocument baseWalletDidDocument = mockDidDocument();
@@ -772,6 +934,85 @@ class IssuersCredentialServiceTest {
         String holderWalletBpn = TestUtils.getRandomBpmNumber();
         Wallet holderWallet = mockWallet(holderWalletBpn, "did:web:holderwallet");
 
-        return Map.of("base", baseWallet,"holder",holderWallet);
+        return Map.of("base", baseWallet, "holder", holderWallet);
+    }
+
+    public static void makeFilterWork() {
+        VerifiableCredential verifiableCredential = mockCredential(
+                List.of("TypeA,TypeB"),
+                List.of(mockCredentialSubject())
+        );
+        IssuersCredential issuersCredential = mockIssuerCredential(verifiableCredential);
+        //getRepository().findAll(specification, pageRequest);
+        when(issuersCredentialRepository.findAll(any(Specification.class), any(PageRequest.class))).thenReturn(
+                new PageImpl<IssuersCredential>(List.of(issuersCredential))
+        );
+    }
+
+    public static void makeCreateWork() {
+        when(issuersCredentialRepository.save(any(IssuersCredential.class)))
+                .thenAnswer(new Answer<IssuersCredential>() {
+                                @Override
+                                public IssuersCredential answer(InvocationOnMock invocation) throws Throwable {
+                                    IssuersCredential argument = invocation.getArgument(0, IssuersCredential.class);
+                                    argument.setId(42L);
+                                    return argument;
+                                }
+                            }
+                );
+    }
+
+    private void mockCommon(
+            String baseWalletBpn,
+            String holderWalletBpn,
+            KeyPair keyPair,
+            Wallet baseWallet,
+            Wallet holderWallet
+    ) {
+        when(miwSettings.contractTemplatesUrl()).thenReturn("https://templates.com");
+        when(miwSettings.authorityWalletBpn()).thenReturn(baseWalletBpn);
+        when(commonService.getWalletByIdentifier(baseWalletBpn)).thenReturn(baseWallet);
+        when(commonService.getWalletByIdentifier(holderWalletBpn)).thenReturn(holderWallet);
+        when(walletKeyService.getPrivateKeyByWalletIdentifierAsBytes(baseWallet.getId()))
+                .thenReturn(keyPair.getPrivateKey().asByte());
+        when(miwSettings.supportedFrameworkVCTypes()).thenReturn(Set.of("SustainabilityCredential"));
+        when(miwSettings.vcExpiryDate()).thenReturn(Date.from(Instant.now().plus(Duration.ofDays(2))));
+        when(holdersCredentialRepository.save(any(HoldersCredential.class)))
+                .thenAnswer(new Answer<HoldersCredential>() {
+                                @Override
+                                public HoldersCredential answer(InvocationOnMock invocation) throws Throwable {
+                                    HoldersCredential argument = invocation.getArgument(0, HoldersCredential.class);
+                                    argument.setId(42L);
+                                    return argument;
+                                }
+                            }
+                );
+    }
+
+    public static DidDocument buildDidDocument(String hostName, KeyPair keyPair) throws KeyGenerationException {
+        final Did did = DidWebFactory.fromHostname(hostName);
+
+        // Extracting keys
+        // final Ed25519KeySet keySet = new Ed25519KeySet(privateKey, publicKey);
+
+        IPublicKey publicKey = keyPair.getPublicKey();
+        final MultibaseString publicKeyBase = MultibaseFactory.create(publicKey.asByte());
+
+        // Building Verification Methods:
+        final List<VerificationMethod> verificationMethods = new ArrayList<>();
+        final Ed25519VerificationMethodBuilder builder = new Ed25519VerificationMethodBuilder();
+        final Ed25519VerificationMethod key =
+                builder
+                        .id(URI.create(did.toUri() + "#key-" + 1))
+                        .controller(did.toUri())
+                        .publicKeyMultiBase(publicKeyBase)
+                        .build();
+        verificationMethods.add(key);
+
+        final DidDocumentBuilder didDocumentBuilder = new DidDocumentBuilder();
+        didDocumentBuilder.id(did.toUri());
+        didDocumentBuilder.verificationMethods(verificationMethods);
+
+        return didDocumentBuilder.build();
     }
 }

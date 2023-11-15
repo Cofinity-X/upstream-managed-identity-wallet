@@ -106,6 +106,7 @@ dependencies {
     testImplementation group: 'com.github.curious-odd-man', name: 'rgxgen', version: '1.4'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.1'
     testImplementation 'com.github.h-thurow:simple-jndi:0.23.0'
+    testImplementation "org.wiremock:wiremock:3.3.1"
 
 }
 
