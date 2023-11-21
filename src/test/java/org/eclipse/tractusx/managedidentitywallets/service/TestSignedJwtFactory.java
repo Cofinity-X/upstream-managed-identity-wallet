@@ -48,6 +48,13 @@ import org.eclipse.tractusx.ssi.lib.serialization.jwt.SerializedVerifiablePresen
 
 public class TestSignedJwtFactory extends SignedJwtFactory {
 
+    @FunctionalInterface
+    public interface RandomException {
+
+        void random();
+
+    }
+
     private final OctetKeyPairFactory octetKeyPairFactory;
 
     public TestSignedJwtFactory(OctetKeyPairFactory octetKeyPairFactory) {
@@ -74,7 +81,7 @@ public class TestSignedJwtFactory extends SignedJwtFactory {
                                                                  .audience(audience)
                                                                  .claim("vp", vp)
                                                                  .expirationTime(Date.from(
-                                                                         Instant.now().minus(Duration.ofDays(2))))
+                                                                         Instant.now().minus(Duration.ofDays(42))))
                                                                  .jwtID(
                                                                          UUID.randomUUID().toString())
                                                                  .build();
