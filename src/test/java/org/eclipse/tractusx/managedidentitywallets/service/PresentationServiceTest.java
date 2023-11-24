@@ -21,7 +21,6 @@
 
 package org.eclipse.tractusx.managedidentitywallets.service;
 
-import com.github.tomakehurst.wiremock.common.ConsoleNotifier;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.nimbusds.jose.JWSObject;
 import com.nimbusds.jwt.SignedJWT;
@@ -40,7 +39,6 @@ import org.eclipse.tractusx.managedidentitywallets.config.MIWSettings;
 import org.eclipse.tractusx.managedidentitywallets.dao.entity.HoldersCredential;
 import org.eclipse.tractusx.managedidentitywallets.dao.entity.Wallet;
 import org.eclipse.tractusx.managedidentitywallets.dao.repository.HoldersCredentialRepository;
-import org.eclipse.tractusx.managedidentitywallets.dao.repository.WalletKeyRepository;
 import org.eclipse.tractusx.managedidentitywallets.exception.BadDataException;
 import org.eclipse.tractusx.ssi.lib.crypt.IPrivateKey;
 import org.eclipse.tractusx.ssi.lib.crypt.KeyPair;
@@ -50,6 +48,7 @@ import org.eclipse.tractusx.ssi.lib.did.resolver.CompositeDidResolver;
 import org.eclipse.tractusx.ssi.lib.did.web.DidWebFactory;
 import org.eclipse.tractusx.ssi.lib.did.web.DidWebResolver;
 import org.eclipse.tractusx.ssi.lib.did.web.util.DidWebParser;
+import org.eclipse.tractusx.ssi.lib.exception.InvalidJsonLdException;
 import org.eclipse.tractusx.ssi.lib.exception.InvalidePrivateKeyFormat;
 import org.eclipse.tractusx.ssi.lib.exception.KeyGenerationException;
 import org.eclipse.tractusx.ssi.lib.exception.UnsupportedSignatureTypeException;
@@ -74,6 +73,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.testcontainers.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -85,17 +85,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 class PresentationServiceTest {
 
-    public static final String BPNL = "BPNL00000000000";
 
     private static PresentationService presentationService;
 
     private static HoldersCredentialRepository holdersCredentialRepository;
-
-    private static WalletKeyRepository walletKeyRepository;
 
     private static CommonService commonService;
 
@@ -109,7 +107,7 @@ class PresentationServiceTest {
     static WireMockExtension holder = WireMockExtension.newInstance()
                                                        .options(wireMockConfig()
                                                                         .dynamicPort()
-                                                                        .notifier(new ConsoleNotifier(true))
+                                                                        //.notifier(new ConsoleNotifier(true))
                                                        )
                                                        .build();
 
@@ -117,7 +115,7 @@ class PresentationServiceTest {
     static WireMockExtension issuer = WireMockExtension.newInstance()
                                                        .options(wireMockConfig()
                                                                         .dynamicPort()
-                                                                        .notifier(new ConsoleNotifier(true))
+                                                                        //.notifier(new ConsoleNotifier(true))
                                                        )
                                                        .build();
 
@@ -128,7 +126,6 @@ class PresentationServiceTest {
         walletKeyService = Mockito.mock(WalletKeyService.class);
         holdersCredentialRepository = Mockito.mock(HoldersCredentialRepository.class);
         commonService = Mockito.mock(CommonService.class);
-        walletKeyRepository = Mockito.mock(WalletKeyRepository.class);
         didDocumentResolverService = Mockito.mock(DidDocumentResolverService.class);
 
 
@@ -221,6 +218,18 @@ class PresentationServiceTest {
 
     @Nested
     class validatePresentationTest {
+
+        @Test
+        void shouldThrowWhenInvalidJsonLD() throws KeyGenerationException, IOException {
+
+            Map<String, Object> vpJwt = validate(Instant.now().plus(Duration.ofDays(5)), "audience", "audience", null);
+            try (MockedStatic<CommonService> utilities = Mockito.mockStatic(CommonService.class)) {
+                utilities.when(() -> CommonService.validateExpiry(any(Boolean.class), any(VerifiableCredential.class), any(Map.class))).thenAnswer(inv ->{
+                    throw new InvalidJsonLdException("");
+                });
+                assertThrows(BadDataException.class, () -> presentationService.validatePresentation(vpJwt, true, true, "audience"));
+            }
+        }
 
         @Test
         void shouldValidate() throws KeyGenerationException, IOException {
