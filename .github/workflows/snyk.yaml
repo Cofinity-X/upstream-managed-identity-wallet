@@ -1,0 +1,15 @@
+name: Snyk Scan
+on: 
+    schedule:
+        # Once a day
+        - cron: "0 0 * * *"
+    workflow_dispatch:
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Run Snyk to check for vulnerabilities
+        uses: snyk/actions/gradle-jdk17@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
