@@ -9,6 +9,9 @@ on:
     schedule:
         - cron: "0 0 * * *"
     workflow_dispatch:
+env:
+    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    GITHUB_USERNAME: ${{ github.actor }}
 jobs:
   security:
     runs-on: ubuntu-latest
