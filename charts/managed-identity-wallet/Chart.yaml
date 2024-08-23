@@ -23,8 +23,8 @@ description: |
   Managed Identity Wallet is supposed to supply a secure data source and data sink for Digital Identity Documents (DID), in order to enable Self-Sovereign Identity founding on those DIDs.
   And at the same it shall support an uninterrupted tracking and tracing and documenting the usage of those DIDs, e.g. within logistical supply chains.
 type: application
-version: 1.0.0-develop.3
-appVersion: 1.0.0-develop.3
+version: 0.4.0
+appVersion: 0.4.0
 home: https://github.com/eclipse-tractusx/managed-identity-wallet
 keywords:
   - Managed Identity Wallet
@@ -37,7 +37,7 @@ maintainers:
     url: https://github.com/DominikPinsel
 dependencies:
   - name: keycloak
-    version: 22.1.0
+    version: 15.1.6
     repository: https://charts.bitnami.com/bitnami
     condition: keycloak.enabled
   - name: common
@@ -46,10 +46,11 @@ dependencies:
       - bitnami-common
     version: 2.x.x
   - name: postgresql
-    version: "16.x.x"
+    version: 11.9.13
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
   - name: pgadmin4
-    repository: file://charts/pgadmin4
+    repository: file://charts/pgadmin4 # https://helm.runix.net
+    # License: https://github.com/rowanruseler/helm-charts/blob/main/LICENSE
     version: 1.19.0
     condition: pgadmin4.enabled
