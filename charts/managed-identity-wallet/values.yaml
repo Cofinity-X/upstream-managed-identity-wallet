@@ -113,7 +113,7 @@ networkPolicy:
 # -- add volumes to the miw deployment
 extraVolumes: []
 extraVolumeMounts: []
-# -- Values for MIW 
+# -- Values for MIW
 miw:
   ## @param miw.host Host name
   ## @param miw.logging.level Log level. Should be ether ERROR, WARN, INFO, DEBUG, or TRACE.
@@ -350,7 +350,7 @@ vcrs:
   nameOverride: "verifiable-credential-revocation-service"
   # -- String to partially override common.names.fullname template (will maintain the release name)
   fullnameOverride: "verifiable-credential-revocation-service"
-  # -- ConfigMap Name 
+  # -- ConfigMap Name
   configName: "verifiable-credential-revocation-service-config"
   # -- The Service name
   serviceName: "verifiable-credential-revocation-service"
@@ -376,7 +376,7 @@ vcrs:
     DATABASE_PORT: 5432
     # -- The Database Name
     DATABASE_NAME: vcrs_app
-    # -- The Database SSL 
+    # -- The Database SSL
     DATABASE_USE_SSL_COMMUNICATION: false
     # -- The Database Name
     DATABASE_USERNAME: vcrs
@@ -392,7 +392,7 @@ vcrs:
     SERVICE_SECURITY_ENABLED: true
     # -- KeyClocak Configurations
     KEYCLOAK_REALM: miw_test
-    # -- ClientID Config 
+    # -- ClientID Config
     KEYCLOAK_CLIENT_ID: miw_private_client
     # -- ClientID Config
     KEYCLOAK_PUBLIC_CLIENT_ID: miw_public_client
