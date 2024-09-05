@@ -156,6 +156,7 @@ jobs:
           context: .
           push: true
           tags: kind-registry:5000/miw:testing
+          file: ./miw/Dockerfile
 
       - uses: actions/setup-python@v4
         with:
