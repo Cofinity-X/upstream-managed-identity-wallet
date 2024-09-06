@@ -40,6 +40,9 @@ maintainers:
   - name: Dominik Pinsel
     email: dominik.pinsel@mercedes-benz.com
     url: https://github.com/DominikPinsel
+  - name: Rohit Solanki
+    email: rohit.solanki@smartsensesolutions.com
+    url: https://github.com/rohit-smartsensesolutions
 
 dependencies:
   - name: keycloak
