@@ -103,7 +103,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | ingress.hosts | list | `[]` | Ingress accepted hostnames |
 | ingress.tls | list | `[]` | Ingress TLS configuration |
 | initContainers | list | `[]` | add initContainers to the miw deployment |
-| keycloak | object | `{"auth":{"adminPassword":"","adminUser":"admin"},"enabled":true,"extraEnvVars":[],"ingress":{"annotations":{},"enabled":false,"hosts":[],"tls":[]},"keycloakConfigCli":{"backoffLimit":2,"enabled":true,"existingConfigmap":"keycloak-realm-config"},"postgresql":{"auth":{"database":"miw_keycloak","password":"adminpass","username":"miw_keycloak"},"enabled":true,"nameOverride":"keycloak-postgresql","volumePermissions":{"enabled":true}}}` | Values for KEYCLOAK |
+| keycloak | object | `{"auth":{"adminPassword":"","adminUser":"admin"},"enabled":true,"extraEnvVars":[],"ingress":{"annotations":{},"enabled":false,"hosts":[],"tls":[]},"keycloakConfigCli":{"backoffLimit":2,"enabled":true,"existingConfigmap":"keycloak-realm-config"},"postgresql":{"auth":{"database":"miw_keycloak","password":"","username":"miw_keycloak"},"enabled":true,"nameOverride":"keycloak-postgresql","volumePermissions":{"enabled":true}}}` | Values for KEYCLOAK |
 | keycloak.auth.adminPassword | string | `""` | Keycloak admin password |
 | keycloak.auth.adminUser | string | `"admin"` | Keycloak admin user |
 | keycloak.enabled | bool | `true` | Enable to deploy Keycloak |
@@ -116,7 +116,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | keycloak.keycloakConfigCli.enabled | bool | `true` | Enable to create the miw playground realm |
 | keycloak.keycloakConfigCli.existingConfigmap | string | `"keycloak-realm-config"` | Existing configmap name for the realm configuration |
 | keycloak.postgresql.auth.database | string | `"miw_keycloak"` | Database name |
-| keycloak.postgresql.auth.password | string | `"adminpass"` | KeycloakPostgresql password to set (if empty one is generated) |
+| keycloak.postgresql.auth.password | string | `""` | KeycloakPostgresql password to set (if empty one is generated) |
 | keycloak.postgresql.auth.username | string | `"miw_keycloak"` | Postgresql admin user password |
 | keycloak.postgresql.enabled | bool | `true` | Enable to deploy PostgreSQL |
 | keycloak.postgresql.nameOverride | string | `"keycloak-postgresql"` | Name of the PostgreSQL chart to deploy. Mandatory when the MIW deploys a PostgreSQL chart, too. |
@@ -170,11 +170,11 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | pgadmin4.ingress.tls | list | `[]` | See [here](https://github.com/rowanruseler/helm-charts/blob/9b970b2e419c2300dfbb3f827a985157098a0287/charts/pgadmin4/values.yaml#L109) how to configure tls for the ingress host(s) |
 | podAnnotations | object | `{}` | PodAnnotation configuration |
 | podSecurityContext | object | `{}` | Pod security configurations |
-| postgresql | object | `{"auth":{"database":"miw_app","enablePostgresUser":true,"password":"adminpass","postgresPassword":"adminpass","username":"miw"},"backup":{"cronjob":{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}},"enabled":false},"enabled":true,"image":{"debug":true,"tag":"16-debian-12"},"primary":{"extraVolumeMounts":[{"mountPath":"/docker-entrypoint-initdb.d/seed","name":"postgres-seed"}],"extraVolumes":[{"name":"postgres-seed","persistentVolumeClaim":{"claimName":"postgres-seed-pvc"}}],"initdb":{"password":"adminpass","scripts":{"init.sql":"CREATE DATABASE vcrs_app;\nCREATE USER vcrs WITH ENCRYPTED PASSWORD 'adminpass';\nGRANT ALL PRIVILEGES ON DATABASE vcrs_app TO vcrs;\n\\c vcrs_app\nGRANT ALL ON SCHEMA public TO vcrs;\n"},"user":"postgres"}},"volumePermissions":{"enabled":true}}` | Values for POSTGRESQL For more information on how to configure the PostgreSQL chart see https://github.com/bitnami/charts/tree/main/bitnami/postgresql. |
+| postgresql | object | `{"auth":{"database":"miw_app","enablePostgresUser":true,"password":"","postgresPassword":"","username":"miw"},"backup":{"cronjob":{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}},"enabled":false},"enabled":true,"image":{"debug":true,"tag":"16-debian-12"},"primary":{"extraVolumeMounts":[{"mountPath":"/docker-entrypoint-initdb.d/seed","name":"postgres-seed"}],"extraVolumes":[{"name":"postgres-seed","persistentVolumeClaim":{"claimName":"postgres-seed-pvc"}}],"initdb":{"password":"adminpass","scripts":{"init.sql":"CREATE DATABASE vcrs_app;\nCREATE USER vcrs WITH ENCRYPTED PASSWORD 'adminpass';\nGRANT ALL PRIVILEGES ON DATABASE vcrs_app TO vcrs;\n\\c vcrs_app\nGRANT ALL ON SCHEMA public TO vcrs;\n"},"user":"postgres"}},"volumePermissions":{"enabled":true}}` | Values for POSTGRESQL For more information on how to configure the PostgreSQL chart see https://github.com/bitnami/charts/tree/main/bitnami/postgresql. |
 | postgresql.auth.database | string | `"miw_app"` | Postgresql database to create |
 | postgresql.auth.enablePostgresUser | bool | `true` | Enable postgresql admin user |
-| postgresql.auth.password | string | `"adminpass"` | Postgresql password to set (if empty one is generated) |
-| postgresql.auth.postgresPassword | string | `"adminpass"` | Postgresql admin user password |
+| postgresql.auth.password | string | `""` | Postgresql password to set (if empty one is generated) |
+| postgresql.auth.postgresPassword | string | `""` | Postgresql admin user password |
 | postgresql.auth.username | string | `"miw"` | Postgresql user to create |
 | postgresql.backup.cronjob | object | `{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}}` | Cronjob Configuration |
 | postgresql.backup.cronjob.schedule | string | `"* */6 * * *"` | Backup schedule |
