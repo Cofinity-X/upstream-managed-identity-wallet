@@ -141,13 +141,13 @@ miw:
     # -- Database port
     port: 5432
     # -- Database host
-    host: "managed-identity-wallet-postgresql"
+    host: "{{ .Release.Name }}-postgresql"
     # -- Database user
     user: "miw"
     # -- Database name
     name: "miw_app"
     # -- Existing secret name for the database password
-    secret: "managed-identity-wallet-postgresql"
+    secret: "{{ .Release.Name }}-postgresql"
     # -- Existing secret key for the database password
     secretPasswordKey: "password"
     # -- Password encryption configuratons

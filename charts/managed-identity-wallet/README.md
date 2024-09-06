@@ -120,17 +120,17 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | keycloak.postgresql.auth.username | string | `"miw_keycloak"` | Postgresql admin user password |
 | keycloak.postgresql.enabled | bool | `true` | Enable to deploy PostgreSQL |
 | keycloak.postgresql.nameOverride | string | `"keycloak-postgresql"` | Name of the PostgreSQL chart to deploy. Mandatory when the MIW deploys a PostgreSQL chart, too. |
-| miw | object | `{"authorityWallet":{"bpn":"BPNL000000000000","name":""},"database":{"encryptionKey":{"secret":"","secretKey":"","value":""},"host":"managed-identity-wallet-postgresql","name":"miw_app","port":5432,"secret":"managed-identity-wallet-postgresql","secretPasswordKey":"password","useSSL":false,"user":"miw"},"environment":"dev","host":"{{ .Release.Name }}-managed-identity-wallet:8080","keycloak":{"clientId":"miw_private_client","realm":"miw_test","url":"http://{{ .Release.Name }}-keycloak"},"livenessProbe":{"enabled":true,"failureThreshold":3,"initialDelaySeconds":20,"periodSeconds":5,"timeoutSeconds":15},"logging":{"level":"INFO"},"readinessProbe":{"enabled":true,"failureThreshold":3,"initialDelaySeconds":30,"periodSeconds":5,"successThreshold":1,"timeoutSeconds":5},"ssi":{"enforceHttpsInDidWebResolution":true,"vcExpiryDate":""}}` | Values for MIW |
+| miw | object | `{"authorityWallet":{"bpn":"BPNL000000000000","name":""},"database":{"encryptionKey":{"secret":"","secretKey":"","value":""},"host":"{{ .Release.Name }}-postgresql","name":"miw_app","port":5432,"secret":"{{ .Release.Name }}-postgresql","secretPasswordKey":"password","useSSL":false,"user":"miw"},"environment":"dev","host":"{{ .Release.Name }}-managed-identity-wallet:8080","keycloak":{"clientId":"miw_private_client","realm":"miw_test","url":"http://{{ .Release.Name }}-keycloak"},"livenessProbe":{"enabled":true,"failureThreshold":3,"initialDelaySeconds":20,"periodSeconds":5,"timeoutSeconds":15},"logging":{"level":"INFO"},"readinessProbe":{"enabled":true,"failureThreshold":3,"initialDelaySeconds":30,"periodSeconds":5,"successThreshold":1,"timeoutSeconds":5},"ssi":{"enforceHttpsInDidWebResolution":true,"vcExpiryDate":""}}` | Values for MIW |
 | miw.authorityWallet.bpn | string | `"BPNL000000000000"` | Authority Wallet BPNL |
 | miw.authorityWallet.name | string | `""` | Authority Wallet Name |
 | miw.database.encryptionKey | object | `{"secret":"","secretKey":"","value":""}` | Password encryption configuratons |
 | miw.database.encryptionKey.secret | string | `""` | Existing secret for database encryption key |
 | miw.database.encryptionKey.secretKey | string | `""` | Existing secret key for database encryption key |
 | miw.database.encryptionKey.value | string | `""` | Database encryption key for confidential data.  Ignored if `secret` is set. If empty a secret with 32 random alphanumeric chars is generated. |
-| miw.database.host | string | `"managed-identity-wallet-postgresql"` | Database host |
+| miw.database.host | string | `"{{ .Release.Name }}-postgresql"` | Database host |
 | miw.database.name | string | `"miw_app"` | Database name |
 | miw.database.port | int | `5432` | Database port |
-| miw.database.secret | string | `"managed-identity-wallet-postgresql"` | Existing secret name for the database password |
+| miw.database.secret | string | `"{{ .Release.Name }}-postgresql"` | Existing secret name for the database password |
 | miw.database.secretPasswordKey | string | `"password"` | Existing secret key for the database password |
 | miw.database.useSSL | bool | `false` | Set to true to enable SSL connection to the database |
 | miw.database.user | string | `"miw"` | Database user |
