@@ -209,7 +209,7 @@ keycloak:
       # -- Postgresql admin user password
       username: "miw_keycloak"
       # -- KeycloakPostgresql password to set (if empty one is generated)
-      password: "adminpass"
+      password: ""
       # -- Database name
       database: "miw_keycloak"
     volumePermissions:
@@ -255,11 +255,11 @@ postgresql:
     # -- Enable postgresql admin user
     enablePostgresUser: true
     # -- Postgresql admin user password
-    postgresPassword: "adminpass"
+    postgresPassword: ""
     # -- Postgresql user to create
     username: "miw"
     # -- Postgresql password to set (if empty one is generated)
-    password: "adminpass"
+    password: ""
     # -- Postgresql database to create
     database: "miw_app"
     # -- Creating a new database for VCRS application (Edit the DB configurations as required in configmap)
