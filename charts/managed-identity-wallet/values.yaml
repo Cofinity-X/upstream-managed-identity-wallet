@@ -33,8 +33,11 @@ image:
   tag: ""
 imagePullSecrets: []
 # --  Parameters for the application (will be stored as secrets - so, for passwords, ...)
-secrets: {}
-# -- envs Parameters for the application (will be provided as environment variables)
+secrets:
+  # -- envs Parameters for the application (will be provided as environment variables)
+  # -- Password for postgres admin user
+  name: postgresPassword
+  value: "defaultpassword"
 envs: {}
 serviceAccount:
   # -- Enable creation of ServiceAccount
@@ -150,8 +153,6 @@ miw:
     secret: "{{ .Release.Name }}-postgresql"
     # -- Existing secret key for the database password
     secretPasswordKey: "password"
-    # -- Password for postgres admin user
-    postgresPassword: "defaultpassword"
     # -- Password encryption configuratons
     encryptionKey:
       # -- Database encryption key for confidential data.  Ignored if `secret` is set. If empty a secret with 32 random alphanumeric chars is generated.

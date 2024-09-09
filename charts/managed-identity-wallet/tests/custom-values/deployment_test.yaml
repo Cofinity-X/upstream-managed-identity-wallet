@@ -39,7 +39,7 @@ tests:
           path: spec.template.spec.containers[0].env
       - lengthEqual:
           path: spec.template.spec.containers[0].env
-          count: 21 # One hard-wired, four because Values.postgresql.internal.enabled == true and five from values.yaml "secrets" and "envs"
+          count: 22 # One hard-wired, four because Values.postgresql.internal.enabled == true and five from values.yaml "secrets" and "envs"
       - equal:
           path: spec.template.spec.containers[0].env
           value:
@@ -83,8 +83,6 @@ tests:
                 secretKeyRef:
                   key: password
                   name: RELEASE-NAME-postgresql
-            - name: postgresPassword
-              value: "defaultpassword"
             - name: APPLICATION_PORT
               value: "8080"
             - name: VC_EXPIRY_DATE
@@ -93,4 +91,14 @@ tests:
               valueFrom:
                 secretKeyRef:
                   key: encryption-key
+                  name: RELEASE-NAME-managed-identity-wallet
+            - name: name
+              valueFrom:
+                secretKeyRef:
+                  key: name
+                  name: RELEASE-NAME-managed-identity-wallet
+            - name: value
+              valueFrom:
+                secretKeyRef:
+                  key: value
                   name: RELEASE-NAME-managed-identity-wallet
