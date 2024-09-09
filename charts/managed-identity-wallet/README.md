@@ -89,7 +89,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity configuration |
-| envs | object | `{}` |  |
+| envs | object | `{}` | envs Parameters for the application (will be provided as environment variables) |
 | extraVolumeMounts | list | `[]` |  |
 | extraVolumes | list | `[]` | add volumes to the miw deployment |
 | fullnameOverride | string | `""` | String to fully override common.names.fullname template |
@@ -189,8 +189,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | resources.limits.memory | string | `"1Gi"` | Memory resource limits |
 | resources.requests.cpu | string | `"250m"` | CPU resource requests |
 | resources.requests.memory | string | `"500Mi"` | Memory resource requests |
-| secrets | object | `{"name":"postgresPassword","value":"defaultpassword"}` | Parameters for the application (will be stored as secrets - so, for passwords, ...) |
-| secrets.name | string | `"postgresPassword"` | Password for postgres admin user |
+| secrets | object | `{}` | Parameters for the application (will be stored as secrets - so, for passwords, ...) |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"privileged":false,"runAsGroup":11111,"runAsNonRoot":true,"runAsUser":11111}` | Pod security parameters |
 | securityContext.allowPrivilegeEscalation | bool | `false` | Allow privilege escalation |
 | securityContext.privileged | bool | `false` | Enable privileged container |

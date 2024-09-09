@@ -22,7 +22,7 @@ chart:
   version: 9.9.9+test
   appVersion: 9.9.9
 templates:
-  - templates/miw-deployment.yaml
+  - templates/deployment.yaml
 tests:
   - it: should have correct metadata
     asserts:
@@ -94,7 +94,7 @@ tests:
           path: spec.template.spec.containers[0].env
       - lengthEqual:
           path: spec.template.spec.containers[0].env
-          count: 21 # One hard-wired, four because Values.postgresql.internal.enabled == true and five from values.yaml "secrets" and "envs"
+          count: 19 # One hard-wired, four because Values.postgresql.internal.enabled == true and five from values.yaml "secrets" and "envs"
       - equal:
           path: spec.template.spec.containers[0].env
           value:
@@ -142,16 +142,6 @@ tests:
               value: "8080"
             - name: VC_EXPIRY_DATE
               value: 31-12-2024
-            - name: name
-              valueFrom:
-                secretKeyRef:
-                  key: name
-                  name: RELEASE-NAME-managed-identity-wallet
-            - name: value
-              valueFrom:
-                secretKeyRef:
-                  key: value
-                  name: RELEASE-NAME-managed-identity-wallet
   - it: should have empty values
     asserts:
       - notExists:

@@ -33,11 +33,8 @@ image:
   tag: ""
 imagePullSecrets: []
 # --  Parameters for the application (will be stored as secrets - so, for passwords, ...)
-secrets:
-  # -- envs Parameters for the application (will be provided as environment variables)
-  # -- Password for postgres admin user
-  name: postgresPassword
-  value: "defaultpassword"
+secrets: {}
+# -- envs Parameters for the application (will be provided as environment variables)
 envs: {}
 serviceAccount:
   # -- Enable creation of ServiceAccount
@@ -276,7 +273,7 @@ postgresql:
         name: postgres-seed
     initdb:
       user: "postgres"
-      password: "adminpass"
+      password: "defaultpassword"
       scripts:
         init.sql: |
           CREATE DATABASE vcrs_app;
@@ -354,11 +351,11 @@ vcrs:
   # -- String to partially override common.names.fullname template (will maintain the release name)
   fullnameOverride: "verifiable-credential-revocation-service"
   # -- ConfigMap Name
-  configName: "verifiable-credential-revocation-service-config"
+  configName: "verifiable-credential-revocation-service"
   # -- The Service name
   serviceName: "verifiable-credential-revocation-service"
   # -- The Secret name
-  secretName: "verifiable-credential-revocation-service-secret"
+  secretName: "verifiable-credential-revocation-service"
   image:
     # -- Image repository
     repository: public.ecr.aws/w6s7t8e0/tractusx/verifiable-credential-revocation-service
