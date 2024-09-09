@@ -247,22 +247,23 @@ keycloak:
 postgresql:
   # -- Enable to deploy Postgresql
   enabled: true
-  image:
-    tag: "16-debian-12"
-    # -- Debug logs
-    debug: true
-  auth:
-    # -- Enable postgresql admin user
-    enablePostgresUser: true
-    # -- Postgresql admin user password
-    postgresPassword: "defaultpassword"
-    # -- Postgresql user to create
-    username: "miw"
-    # -- Postgresql password to set (if empty one is generated)
-    password: "defaultpassword"
-    # -- Postgresql database to create
-    database: "miw_app"
-    # -- Creating a new database for VCRS application (Edit the DB configurations as required in configmap)
+  global:
+    image:
+      tag: "16-debian-12"
+      # -- Debug logs
+      debug: true
+    auth:
+      # -- Enable postgresql admin user
+      enablePostgresUser: true
+      # -- Postgresql admin user password
+      postgresPassword: "defaultpassword"
+      # -- Postgresql user to create
+      username: "miw"
+      # -- Postgresql password to set (if empty one is generated)
+      password: "defaultpassword"
+      # -- Postgresql database to create
+      database: "miw_app"
+      # -- Creating a new database for VCRS application (Edit the DB configurations as required in configmap)
   primary:
     extraVolumes:
       - name: postgres-seed

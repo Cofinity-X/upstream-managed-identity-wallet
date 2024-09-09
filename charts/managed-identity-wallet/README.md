@@ -170,12 +170,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | pgadmin4.ingress.tls | list | `[]` | See [here](https://github.com/rowanruseler/helm-charts/blob/9b970b2e419c2300dfbb3f827a985157098a0287/charts/pgadmin4/values.yaml#L109) how to configure tls for the ingress host(s) |
 | podAnnotations | object | `{}` | PodAnnotation configuration |
 | podSecurityContext | object | `{}` | Pod security configurations |
-| postgresql | object | `{"auth":{"database":"miw_app","enablePostgresUser":true,"password":"defaultpassword","postgresPassword":"defaultpassword","username":"miw"},"backup":{"cronjob":{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}},"enabled":false},"enabled":true,"image":{"debug":true,"tag":"16-debian-12"},"primary":{"extraVolumeMounts":[{"mountPath":"/docker-entrypoint-initdb.d/seed","name":"postgres-seed"}],"extraVolumes":[{"name":"postgres-seed","persistentVolumeClaim":{"claimName":"postgres-seed-pvc"}}],"initdb":{"password":"defaultpassword","scripts":{"init.sql":"CREATE DATABASE vcrs_app;\nCREATE USER vcrs WITH ENCRYPTED PASSWORD 'defaultpassword';\nGRANT ALL PRIVILEGES ON DATABASE vcrs_app TO vcrs;\n\\c vcrs_app\nGRANT ALL ON SCHEMA public TO vcrs;\n"},"user":"postgres"}},"volumePermissions":{"enabled":true}}` | Values for POSTGRESQL For more information on how to configure the PostgreSQL chart see https://github.com/bitnami/charts/tree/main/bitnami/postgresql. |
-| postgresql.auth.database | string | `"miw_app"` | Postgresql database to create |
-| postgresql.auth.enablePostgresUser | bool | `true` | Enable postgresql admin user |
-| postgresql.auth.password | string | `"defaultpassword"` | Postgresql password to set (if empty one is generated) |
-| postgresql.auth.postgresPassword | string | `"defaultpassword"` | Postgresql admin user password |
-| postgresql.auth.username | string | `"miw"` | Postgresql user to create |
+| postgresql | object | `{"backup":{"cronjob":{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}},"enabled":false},"enabled":true,"global":{"auth":{"database":"miw_app","enablePostgresUser":true,"password":"defaultpassword","postgresPassword":"defaultpassword","username":"miw"},"image":{"debug":true,"tag":"16-debian-12"}},"primary":{"extraVolumeMounts":[{"mountPath":"/docker-entrypoint-initdb.d/seed","name":"postgres-seed"}],"extraVolumes":[{"name":"postgres-seed","persistentVolumeClaim":{"claimName":"postgres-seed-pvc"}}],"initdb":{"password":"defaultpassword","scripts":{"init.sql":"CREATE DATABASE vcrs_app;\nCREATE USER vcrs WITH ENCRYPTED PASSWORD 'defaultpassword';\nGRANT ALL PRIVILEGES ON DATABASE vcrs_app TO vcrs;\n\\c vcrs_app\nGRANT ALL ON SCHEMA public TO vcrs;\n"},"user":"postgres"}},"volumePermissions":{"enabled":true}}` | Values for POSTGRESQL For more information on how to configure the PostgreSQL chart see https://github.com/bitnami/charts/tree/main/bitnami/postgresql. |
 | postgresql.backup.cronjob | object | `{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}}` | Cronjob Configuration |
 | postgresql.backup.cronjob.schedule | string | `"* */6 * * *"` | Backup schedule |
 | postgresql.backup.cronjob.storage.existingClaim | string | `""` | Name of an existing PVC to use |
@@ -183,7 +178,12 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | postgresql.backup.cronjob.storage.size | string | `"8Gi"` | PVC Storage Request for the backup data volume |
 | postgresql.backup.enabled | bool | `false` | Enable to create a backup cronjob |
 | postgresql.enabled | bool | `true` | Enable to deploy Postgresql |
-| postgresql.image.debug | bool | `true` | Debug logs |
+| postgresql.global.auth.database | string | `"miw_app"` | Postgresql database to create |
+| postgresql.global.auth.enablePostgresUser | bool | `true` | Enable postgresql admin user |
+| postgresql.global.auth.password | string | `"defaultpassword"` | Postgresql password to set (if empty one is generated) |
+| postgresql.global.auth.postgresPassword | string | `"defaultpassword"` | Postgresql admin user password |
+| postgresql.global.auth.username | string | `"miw"` | Postgresql user to create |
+| postgresql.global.image.debug | bool | `true` | Debug logs |
 | replicaCount | int | `1` | The amount of replicas to run |
 | resources.limits.cpu | int | `2` | CPU resource limits |
 | resources.limits.memory | string | `"1Gi"` | Memory resource limits |
