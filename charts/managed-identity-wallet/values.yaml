@@ -33,8 +33,12 @@ image:
   tag: ""
 imagePullSecrets: []
 # --  Parameters for the application (will be stored as secrets - so, for passwords, ...)
-secrets: {}
-# -- envs Parameters for the application (will be provided as environment variables)
+secrets:
+  # -- envs Parameters for the application (will be provided as environment variables)
+  postgresPassword: "defaultpassword"
+  # -- Password for postgres admin user
+  password: "defaultpassword"
+  # password for miw user
 envs: {}
 serviceAccount:
   # -- Enable creation of ServiceAccount
@@ -209,7 +213,7 @@ keycloak:
       # -- Postgresql admin user password
       username: "miw_keycloak"
       # -- KeycloakPostgresql password to set (if empty one is generated)
-      password: ""
+      password: "defaultpassword"
       # -- Database name
       database: "miw_keycloak"
     volumePermissions:
@@ -255,11 +259,11 @@ postgresql:
     # -- Enable postgresql admin user
     enablePostgresUser: true
     # -- Postgresql admin user password
-    postgresPassword: ""
+    postgresPassword: "defaultpassword"
     # -- Postgresql user to create
     username: "miw"
     # -- Postgresql password to set (if empty one is generated)
-    password: ""
+    password: "defaultpassword"
     # -- Postgresql database to create
     database: "miw_app"
     # -- Creating a new database for VCRS application (Edit the DB configurations as required in configmap)
@@ -277,7 +281,7 @@ postgresql:
       scripts:
         init.sql: |
           CREATE DATABASE vcrs_app;
-          CREATE USER vcrs WITH ENCRYPTED PASSWORD 'adminpass';
+          CREATE USER vcrs WITH ENCRYPTED PASSWORD 'defaultpassword';
           GRANT ALL PRIVILEGES ON DATABASE vcrs_app TO vcrs;
           \c vcrs_app
           GRANT ALL ON SCHEMA public TO vcrs;
@@ -406,7 +410,7 @@ vcrs:
     APP_LOG_LEVEL: INFO
   secrets:
     # -- The Database Password
-    DATABASE_PASSWORD: "adminpass"
+    DATABASE_PASSWORD: "defaultpassword"
   resources:
     requests:
       # -- CPU resource requests

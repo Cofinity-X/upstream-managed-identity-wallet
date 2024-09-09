@@ -89,7 +89,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity configuration |
-| envs | object | `{}` | envs Parameters for the application (will be provided as environment variables) |
+| envs | object | `{}` |  |
 | extraVolumeMounts | list | `[]` |  |
 | extraVolumes | list | `[]` | add volumes to the miw deployment |
 | fullnameOverride | string | `""` | String to fully override common.names.fullname template |
@@ -103,7 +103,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | ingress.hosts | list | `[]` | Ingress accepted hostnames |
 | ingress.tls | list | `[]` | Ingress TLS configuration |
 | initContainers | list | `[]` | add initContainers to the miw deployment |
-| keycloak | object | `{"auth":{"adminPassword":"","adminUser":"admin"},"enabled":true,"extraEnvVars":[],"ingress":{"annotations":{},"enabled":false,"hosts":[],"tls":[]},"keycloakConfigCli":{"backoffLimit":2,"enabled":true,"existingConfigmap":"keycloak-realm-config"},"postgresql":{"auth":{"database":"miw_keycloak","password":"","username":"miw_keycloak"},"enabled":true,"nameOverride":"keycloak-postgresql","volumePermissions":{"enabled":true}}}` | Values for KEYCLOAK |
+| keycloak | object | `{"auth":{"adminPassword":"","adminUser":"admin"},"enabled":true,"extraEnvVars":[],"ingress":{"annotations":{},"enabled":false,"hosts":[],"tls":[]},"keycloakConfigCli":{"backoffLimit":2,"enabled":true,"existingConfigmap":"keycloak-realm-config"},"postgresql":{"auth":{"database":"miw_keycloak","password":"defaultpassword","username":"miw_keycloak"},"enabled":true,"nameOverride":"keycloak-postgresql","volumePermissions":{"enabled":true}}}` | Values for KEYCLOAK |
 | keycloak.auth.adminPassword | string | `""` | Keycloak admin password |
 | keycloak.auth.adminUser | string | `"admin"` | Keycloak admin user |
 | keycloak.enabled | bool | `true` | Enable to deploy Keycloak |
@@ -116,7 +116,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | keycloak.keycloakConfigCli.enabled | bool | `true` | Enable to create the miw playground realm |
 | keycloak.keycloakConfigCli.existingConfigmap | string | `"keycloak-realm-config"` | Existing configmap name for the realm configuration |
 | keycloak.postgresql.auth.database | string | `"miw_keycloak"` | Database name |
-| keycloak.postgresql.auth.password | string | `""` | KeycloakPostgresql password to set (if empty one is generated) |
+| keycloak.postgresql.auth.password | string | `"defaultpassword"` | KeycloakPostgresql password to set (if empty one is generated) |
 | keycloak.postgresql.auth.username | string | `"miw_keycloak"` | Postgresql admin user password |
 | keycloak.postgresql.enabled | bool | `true` | Enable to deploy PostgreSQL |
 | keycloak.postgresql.nameOverride | string | `"keycloak-postgresql"` | Name of the PostgreSQL chart to deploy. Mandatory when the MIW deploys a PostgreSQL chart, too. |
@@ -170,11 +170,11 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | pgadmin4.ingress.tls | list | `[]` | See [here](https://github.com/rowanruseler/helm-charts/blob/9b970b2e419c2300dfbb3f827a985157098a0287/charts/pgadmin4/values.yaml#L109) how to configure tls for the ingress host(s) |
 | podAnnotations | object | `{}` | PodAnnotation configuration |
 | podSecurityContext | object | `{}` | Pod security configurations |
-| postgresql | object | `{"auth":{"database":"miw_app","enablePostgresUser":true,"password":"","postgresPassword":"","username":"miw"},"backup":{"cronjob":{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}},"enabled":false},"enabled":true,"image":{"debug":true,"tag":"16-debian-12"},"primary":{"extraVolumeMounts":[{"mountPath":"/docker-entrypoint-initdb.d/seed","name":"postgres-seed"}],"extraVolumes":[{"name":"postgres-seed","persistentVolumeClaim":{"claimName":"postgres-seed-pvc"}}],"initdb":{"password":"adminpass","scripts":{"init.sql":"CREATE DATABASE vcrs_app;\nCREATE USER vcrs WITH ENCRYPTED PASSWORD 'adminpass';\nGRANT ALL PRIVILEGES ON DATABASE vcrs_app TO vcrs;\n\\c vcrs_app\nGRANT ALL ON SCHEMA public TO vcrs;\n"},"user":"postgres"}},"volumePermissions":{"enabled":true}}` | Values for POSTGRESQL For more information on how to configure the PostgreSQL chart see https://github.com/bitnami/charts/tree/main/bitnami/postgresql. |
+| postgresql | object | `{"auth":{"database":"miw_app","enablePostgresUser":true,"password":"defaultpassword","postgresPassword":"defaultpassword","username":"miw"},"backup":{"cronjob":{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}},"enabled":false},"enabled":true,"image":{"debug":true,"tag":"16-debian-12"},"primary":{"extraVolumeMounts":[{"mountPath":"/docker-entrypoint-initdb.d/seed","name":"postgres-seed"}],"extraVolumes":[{"name":"postgres-seed","persistentVolumeClaim":{"claimName":"postgres-seed-pvc"}}],"initdb":{"password":"adminpass","scripts":{"init.sql":"CREATE DATABASE vcrs_app;\nCREATE USER vcrs WITH ENCRYPTED PASSWORD 'defaultpassword';\nGRANT ALL PRIVILEGES ON DATABASE vcrs_app TO vcrs;\n\\c vcrs_app\nGRANT ALL ON SCHEMA public TO vcrs;\n"},"user":"postgres"}},"volumePermissions":{"enabled":true}}` | Values for POSTGRESQL For more information on how to configure the PostgreSQL chart see https://github.com/bitnami/charts/tree/main/bitnami/postgresql. |
 | postgresql.auth.database | string | `"miw_app"` | Postgresql database to create |
 | postgresql.auth.enablePostgresUser | bool | `true` | Enable postgresql admin user |
-| postgresql.auth.password | string | `""` | Postgresql password to set (if empty one is generated) |
-| postgresql.auth.postgresPassword | string | `""` | Postgresql admin user password |
+| postgresql.auth.password | string | `"defaultpassword"` | Postgresql password to set (if empty one is generated) |
+| postgresql.auth.postgresPassword | string | `"defaultpassword"` | Postgresql admin user password |
 | postgresql.auth.username | string | `"miw"` | Postgresql user to create |
 | postgresql.backup.cronjob | object | `{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}}` | Cronjob Configuration |
 | postgresql.backup.cronjob.schedule | string | `"* */6 * * *"` | Backup schedule |
@@ -189,7 +189,9 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | resources.limits.memory | string | `"1Gi"` | Memory resource limits |
 | resources.requests.cpu | string | `"250m"` | CPU resource requests |
 | resources.requests.memory | string | `"500Mi"` | Memory resource requests |
-| secrets | object | `{}` | Parameters for the application (will be stored as secrets - so, for passwords, ...) |
+| secrets | object | `{"password":"defaultpassword","postgresPassword":"defaultpassword"}` | Parameters for the application (will be stored as secrets - so, for passwords, ...) |
+| secrets.password | string | `"defaultpassword"` | Password for postgres admin user |
+| secrets.postgresPassword | string | `"defaultpassword"` | envs Parameters for the application (will be provided as environment variables) |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"privileged":false,"runAsGroup":11111,"runAsNonRoot":true,"runAsUser":11111}` | Pod security parameters |
 | securityContext.allowPrivilegeEscalation | bool | `false` | Allow privilege escalation |
 | securityContext.privileged | bool | `false` | Enable privileged container |
@@ -202,7 +204,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | serviceAccount.create | bool | `true` | Enable creation of ServiceAccount |
 | serviceAccount.name | string | `""` | The name of the ServiceAccount to use. |
 | tolerations | list | `[]` | Tolerations configuration |
-| vcrs | object | `{"configName":"verifiable-credential-revocation-service-config","database":{"encryptionKey":{"secret":"","secretKey":"","value":""}},"env":{"APPLICATION_LOG_LEVEL":"DEBUG","APPLICATION_NAME":"verifiable-credential-revocation-service","APPLICATION_PORT":8081,"APPLICATION_PROFILE":"local","APP_LOG_LEVEL":"INFO","AUTH_SERVER_URL":"http://{{ .Release.Name }}-keycloak","DATABASE_CONNECTION_POOL_SIZE":10,"DATABASE_HOST":"managed-identity-wallet-postgresql","DATABASE_NAME":"vcrs_app","DATABASE_PORT":5432,"DATABASE_USERNAME":"vcrs","DATABASE_USE_SSL_COMMUNICATION":false,"DOMAIN_URL":"https://977d-203-129-213-107.ngrok-free.app","ENABLE_API_DOC":true,"ENABLE_SWAGGER_UI":true,"KEYCLOAK_CLIENT_ID":"miw_private_client","KEYCLOAK_PUBLIC_CLIENT_ID":"miw_public_client","KEYCLOAK_REALM":"miw_test","MIW_URL":"https://a888-203-129-213-107.ngrok-free.app","SERVICE_SECURITY_ENABLED":true,"VC_SCHEMA_LINK":"https://www.w3.org/2018/credentials/v1, https://cofinity-x.github.io/schema-registry/w3c/v1.0/BitstringStatusList.json"},"fullnameOverride":"verifiable-credential-revocation-service","host":"localhost","image":{"pullPolicy":"IfNotPresent","repository":"public.ecr.aws/w6s7t8e0/tractusx/verifiable-credential-revocation-service","tag":"latest"},"ingress":{"annotations":{},"className":"","enabled":false,"hosts":null,"service":{"port":8081,"type":"ClusterIP"},"tls":[]},"ingressName":"verifiable-credential-revocation-service-ingress","livenessProbe":{"enabled":true,"failureThreshold":5,"initialDelaySeconds":60,"periodSeconds":15,"timeoutSeconds":30},"nameOverride":"verifiable-credential-revocation-service","readinessProbe":{"enabled":true,"failureThreshold":5,"initialDelaySeconds":60,"periodSeconds":15,"successThreshold":1,"timeoutSeconds":15},"replicaCount":1,"resources":{"limits":{"cpu":"500m","memory":"1Gi"},"requests":{"cpu":"250m","memory":"512Mi"}},"secretName":"verifiable-credential-revocation-service-secret","secrets":{"DATABASE_PASSWORD":"adminpass"},"serviceName":"verifiable-credential-revocation-service"}` | Values for Verifiable Credential Revocation Service application |
+| vcrs | object | `{"configName":"verifiable-credential-revocation-service-config","database":{"encryptionKey":{"secret":"","secretKey":"","value":""}},"env":{"APPLICATION_LOG_LEVEL":"DEBUG","APPLICATION_NAME":"verifiable-credential-revocation-service","APPLICATION_PORT":8081,"APPLICATION_PROFILE":"local","APP_LOG_LEVEL":"INFO","AUTH_SERVER_URL":"http://{{ .Release.Name }}-keycloak","DATABASE_CONNECTION_POOL_SIZE":10,"DATABASE_HOST":"managed-identity-wallet-postgresql","DATABASE_NAME":"vcrs_app","DATABASE_PORT":5432,"DATABASE_USERNAME":"vcrs","DATABASE_USE_SSL_COMMUNICATION":false,"DOMAIN_URL":"https://977d-203-129-213-107.ngrok-free.app","ENABLE_API_DOC":true,"ENABLE_SWAGGER_UI":true,"KEYCLOAK_CLIENT_ID":"miw_private_client","KEYCLOAK_PUBLIC_CLIENT_ID":"miw_public_client","KEYCLOAK_REALM":"miw_test","MIW_URL":"https://a888-203-129-213-107.ngrok-free.app","SERVICE_SECURITY_ENABLED":true,"VC_SCHEMA_LINK":"https://www.w3.org/2018/credentials/v1, https://cofinity-x.github.io/schema-registry/w3c/v1.0/BitstringStatusList.json"},"fullnameOverride":"verifiable-credential-revocation-service","host":"localhost","image":{"pullPolicy":"IfNotPresent","repository":"public.ecr.aws/w6s7t8e0/tractusx/verifiable-credential-revocation-service","tag":"latest"},"ingress":{"annotations":{},"className":"","enabled":false,"hosts":null,"service":{"port":8081,"type":"ClusterIP"},"tls":[]},"ingressName":"verifiable-credential-revocation-service-ingress","livenessProbe":{"enabled":true,"failureThreshold":5,"initialDelaySeconds":60,"periodSeconds":15,"timeoutSeconds":30},"nameOverride":"verifiable-credential-revocation-service","readinessProbe":{"enabled":true,"failureThreshold":5,"initialDelaySeconds":60,"periodSeconds":15,"successThreshold":1,"timeoutSeconds":15},"replicaCount":1,"resources":{"limits":{"cpu":"500m","memory":"1Gi"},"requests":{"cpu":"250m","memory":"512Mi"}},"secretName":"verifiable-credential-revocation-service-secret","secrets":{"DATABASE_PASSWORD":"defaultpassword"},"serviceName":"verifiable-credential-revocation-service"}` | Values for Verifiable Credential Revocation Service application |
 | vcrs.configName | string | `"verifiable-credential-revocation-service-config"` | ConfigMap Name |
 | vcrs.database.encryptionKey.secret | string | `""` | Existing secret for database encryption key |
 | vcrs.database.encryptionKey.secretKey | string | `""` | Existing secret key for database encryption key |
@@ -249,7 +251,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | vcrs.resources.requests.cpu | string | `"250m"` | CPU resource requests |
 | vcrs.resources.requests.memory | string | `"512Mi"` | Memory resource requests |
 | vcrs.secretName | string | `"verifiable-credential-revocation-service-secret"` | The Secret name |
-| vcrs.secrets.DATABASE_PASSWORD | string | `"adminpass"` | The Database Password |
+| vcrs.secrets.DATABASE_PASSWORD | string | `"defaultpassword"` | The Database Password |
 | vcrs.serviceName | string | `"verifiable-credential-revocation-service"` | The Service name |
 
 For more information on how to configure the Keycloak see
