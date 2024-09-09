@@ -89,7 +89,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity configuration |
-| envs | object | `{}` |  |
+| envs | object | `{}` | envs Parameters for the application (will be provided as environment variables) |
 | extraVolumeMounts | list | `[]` |  |
 | extraVolumes | list | `[]` | add volumes to the miw deployment |
 | fullnameOverride | string | `""` | String to fully override common.names.fullname template |
@@ -120,7 +120,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | keycloak.postgresql.auth.username | string | `"miw_keycloak"` | Postgresql admin user password |
 | keycloak.postgresql.enabled | bool | `true` | Enable to deploy PostgreSQL |
 | keycloak.postgresql.nameOverride | string | `"keycloak-postgresql"` | Name of the PostgreSQL chart to deploy. Mandatory when the MIW deploys a PostgreSQL chart, too. |
-| miw | object | `{"authorityWallet":{"bpn":"BPNL000000000000","name":""},"database":{"encryptionKey":{"secret":"","secretKey":"","value":""},"host":"{{ .Release.Name }}-postgresql","name":"miw_app","port":5432,"secret":"{{ .Release.Name }}-postgresql","secretPasswordKey":"password","useSSL":false,"user":"miw"},"environment":"dev","host":"{{ .Release.Name }}-managed-identity-wallet:8080","keycloak":{"clientId":"miw_private_client","realm":"miw_test","url":"http://{{ .Release.Name }}-keycloak"},"livenessProbe":{"enabled":true,"failureThreshold":3,"initialDelaySeconds":20,"periodSeconds":5,"timeoutSeconds":15},"logging":{"level":"INFO"},"readinessProbe":{"enabled":true,"failureThreshold":3,"initialDelaySeconds":30,"periodSeconds":5,"successThreshold":1,"timeoutSeconds":5},"ssi":{"enforceHttpsInDidWebResolution":true,"vcExpiryDate":""}}` | Values for MIW |
+| miw | object | `{"authorityWallet":{"bpn":"BPNL000000000000","name":""},"database":{"encryptionKey":{"secret":"","secretKey":"","value":""},"host":"{{ .Release.Name }}-postgresql","name":"miw_app","port":5432,"postgresPassword":"defaultpassword","secret":"{{ .Release.Name }}-postgresql","secretPasswordKey":"password","useSSL":false,"user":"miw"},"environment":"dev","host":"{{ .Release.Name }}-managed-identity-wallet:8080","keycloak":{"clientId":"miw_private_client","realm":"miw_test","url":"http://{{ .Release.Name }}-keycloak"},"livenessProbe":{"enabled":true,"failureThreshold":3,"initialDelaySeconds":20,"periodSeconds":5,"timeoutSeconds":15},"logging":{"level":"INFO"},"readinessProbe":{"enabled":true,"failureThreshold":3,"initialDelaySeconds":30,"periodSeconds":5,"successThreshold":1,"timeoutSeconds":5},"ssi":{"enforceHttpsInDidWebResolution":true,"vcExpiryDate":""}}` | Values for MIW |
 | miw.authorityWallet.bpn | string | `"BPNL000000000000"` | Authority Wallet BPNL |
 | miw.authorityWallet.name | string | `""` | Authority Wallet Name |
 | miw.database.encryptionKey | object | `{"secret":"","secretKey":"","value":""}` | Password encryption configuratons |
@@ -130,6 +130,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | miw.database.host | string | `"{{ .Release.Name }}-postgresql"` | Database host |
 | miw.database.name | string | `"miw_app"` | Database name |
 | miw.database.port | int | `5432` | Database port |
+| miw.database.postgresPassword | string | `"defaultpassword"` | Password for postgres admin user |
 | miw.database.secret | string | `"{{ .Release.Name }}-postgresql"` | Existing secret name for the database password |
 | miw.database.secretPasswordKey | string | `"password"` | Existing secret key for the database password |
 | miw.database.useSSL | bool | `false` | Set to true to enable SSL connection to the database |
@@ -189,9 +190,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | resources.limits.memory | string | `"1Gi"` | Memory resource limits |
 | resources.requests.cpu | string | `"250m"` | CPU resource requests |
 | resources.requests.memory | string | `"500Mi"` | Memory resource requests |
-| secrets | object | `{"password":"defaultpassword","postgresPassword":"defaultpassword"}` | Parameters for the application (will be stored as secrets - so, for passwords, ...) |
-| secrets.password | string | `"defaultpassword"` | Password for postgres admin user |
-| secrets.postgresPassword | string | `"defaultpassword"` | envs Parameters for the application (will be provided as environment variables) |
+| secrets | object | `{}` | Parameters for the application (will be stored as secrets - so, for passwords, ...) |
 | securityContext | object | `{"allowPrivilegeEscalation":false,"privileged":false,"runAsGroup":11111,"runAsNonRoot":true,"runAsUser":11111}` | Pod security parameters |
 | securityContext.allowPrivilegeEscalation | bool | `false` | Allow privilege escalation |
 | securityContext.privileged | bool | `false` | Enable privileged container |
