@@ -147,7 +147,7 @@ miw:
     # -- Database name
     name: "miw_app"
     # -- Existing secret name for the database password
-    secret: "{{ .Release.Name }}-postgresql"
+    secret: "verifiable-credential-revocation-service"
     # -- Existing secret key for the database password
     secretPasswordKey: "password"
     # -- Password encryption configuratons
@@ -247,23 +247,20 @@ keycloak:
 postgresql:
   # -- Enable to deploy Postgresql
   enabled: true
-  global:
-    image:
-      tag: "16-debian-12"
-      # -- Debug logs
-      debug: true
-    auth:
-      # -- Enable postgresql admin user
-      enablePostgresUser: true
-      # -- Postgresql admin user password
-      postgresPassword: "defaultpassword"
-      # -- Postgresql user to create
-      username: "miw"
-      # -- Postgresql password to set (if empty one is generated)
-      password: "defaultpassword"
-      # -- Postgresql database to create
-      database: "miw_app"
-      # -- Creating a new database for VCRS application (Edit the DB configurations as required in configmap)
+  image:
+    tag: "16-debian-12"
+    # -- Debug logs
+    debug: true
+  auth:
+    # -- Enable postgresql admin user
+    enablePostgresUser: true
+    # -- Postgresql admin user password
+    existingSecret: "verifiable-credential-revocation-service"
+    # -- Postgresql user to create
+    username: "miw"
+    # -- Postgresql database to create
+    database: "miw_app"
+    # -- Creating a new database for VCRS application (Edit the DB configurations as required in configmap)
   primary:
     extraVolumes:
       - name: postgres-seed
@@ -408,6 +405,10 @@ vcrs:
   secrets:
     # -- The Database Password
     DATABASE_PASSWORD: "defaultpassword"
+    # -- Postgresql password for MIW non-root User Account
+    password: "defaultpassword"
+    # -- Postgresql password for postgres root-user Account
+    postgres-password: "defaultpassword"
   resources:
     requests:
       # -- CPU resource requests
