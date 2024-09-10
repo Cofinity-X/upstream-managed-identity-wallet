@@ -254,7 +254,7 @@ postgresql:
   auth:
     # -- Enable postgresql admin user
     enablePostgresUser: true
-    # -- Postgresql admin user password
+    # -- Postgresql root-user and non-root user secret
     existingSecret: "verifiable-credential-revocation-service"
     # -- Postgresql user to create
     username: "miw"
@@ -405,9 +405,9 @@ vcrs:
   secrets:
     # -- The Database Password
     DATABASE_PASSWORD: "defaultpassword"
-    # -- Postgresql password for MIW non-root User Account
+    # -- Postgresql password for MIW non-root User
     password: "defaultpassword"
-    # -- Postgresql password for postgres root-user Account
+    # -- Postgresql password for postgres root-user
     postgres-password: "defaultpassword"
   resources:
     requests:

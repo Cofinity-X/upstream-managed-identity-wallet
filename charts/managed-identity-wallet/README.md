@@ -173,7 +173,7 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | postgresql | object | `{"auth":{"database":"miw_app","enablePostgresUser":true,"existingSecret":"verifiable-credential-revocation-service","username":"miw"},"backup":{"cronjob":{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}},"enabled":false},"enabled":true,"image":{"debug":true,"tag":"16-debian-12"},"primary":{"extraVolumeMounts":[{"mountPath":"/docker-entrypoint-initdb.d/seed","name":"postgres-seed"}],"extraVolumes":[{"name":"postgres-seed","persistentVolumeClaim":{"claimName":"postgres-seed-pvc"}}],"initdb":{"password":"defaultpassword","scripts":{"init.sql":"CREATE DATABASE vcrs_app;\nCREATE USER vcrs WITH ENCRYPTED PASSWORD 'defaultpassword';\nGRANT ALL PRIVILEGES ON DATABASE vcrs_app TO vcrs;\n\\c vcrs_app\nGRANT ALL ON SCHEMA public TO vcrs;\n"},"user":"postgres"}},"volumePermissions":{"enabled":true}}` | Values for POSTGRESQL For more information on how to configure the PostgreSQL chart see https://github.com/bitnami/charts/tree/main/bitnami/postgresql. |
 | postgresql.auth.database | string | `"miw_app"` | Postgresql database to create |
 | postgresql.auth.enablePostgresUser | bool | `true` | Enable postgresql admin user |
-| postgresql.auth.existingSecret | string | `"verifiable-credential-revocation-service"` | Postgresql admin user password |
+| postgresql.auth.existingSecret | string | `"verifiable-credential-revocation-service"` | Postgresql root-user and non-root user secret |
 | postgresql.auth.username | string | `"miw"` | Postgresql user to create |
 | postgresql.backup.cronjob | object | `{"schedule":"* */6 * * *","storage":{"existingClaim":"","resourcePolicy":"keep","size":"8Gi"}}` | Cronjob Configuration |
 | postgresql.backup.cronjob.schedule | string | `"* */6 * * *"` | Backup schedule |
@@ -249,8 +249,8 @@ See [helm upgrade](https://helm.sh/docs/helm/helm_upgrade/) for command document
 | vcrs.resources.requests.memory | string | `"512Mi"` | Memory resource requests |
 | vcrs.secretName | string | `"verifiable-credential-revocation-service"` | The Secret name |
 | vcrs.secrets.DATABASE_PASSWORD | string | `"defaultpassword"` | The Database Password |
-| vcrs.secrets.password | string | `"defaultpassword"` | Postgresql password for MIW non-root User Account |
-| vcrs.secrets.postgres-password | string | `"defaultpassword"` | Postgresql password for postgres root-user Account |
+| vcrs.secrets.password | string | `"defaultpassword"` | Postgresql password for MIW non-root User |
+| vcrs.secrets.postgres-password | string | `"defaultpassword"` | Postgresql password for postgres root-user |
 | vcrs.serviceName | string | `"verifiable-credential-revocation-service"` | The Service name |
 
 For more information on how to configure the Keycloak see
